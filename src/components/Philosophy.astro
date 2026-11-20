@@ -1,0 +1,29 @@
+---
+import { philosophy as p } from "../content/content";
+const words = p.quote.split(" ");
+---
+<section id="philosophy" class="philo chapter" aria-labelledby="philo-title" data-chapter="05" data-chapter-title="Philosophy">
+  <div class="philo__inner">
+    <p class="kicker" data-reveal>{p.kicker}</p>
+    <h2 id="philo-title" class="sr-only">Philosophy</h2>
+    <figure class="philo__figure">
+      <svg class="philo__mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M2 2 H38 V38" fill="none" stroke="currentColor" stroke-width="1" /><path d="M2 2 L38 38" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" /></svg>
+      <blockquote class="philo__quote display" data-quote>
+        <p>{words.map((w, i) => <><span class="philo__w">{w}</span>{i < words.length - 1 ? " " : ""}</>)}</p>
+      </blockquote>
+      <figcaption class="label" data-reveal>— {p.attribution}</figcaption>
+    </figure>
+  </div>
+</section>
+
+<style>
+  .philo { background: var(--sage); color: var(--ink); padding-block: clamp(8rem, 18vw, 16rem); }
+  .philo .kicker { color: var(--ink); }
+  .philo__inner { max-width: 72rem; margin-inline: auto; display: grid; gap: clamp(2.5rem, 5vw, 4rem); }
+  .philo__figure { display: grid; gap: 2.5rem; }
+  .philo__mark { width: 2.5rem; color: var(--burgundy); }
+  .philo__quote { margin: 0; font-size: var(--step-3); line-height: 1.12; font-style: italic; letter-spacing: -0.01em; }
+  .philo__w { transition: opacity 0.2s linear; }
+  html:global(.anim) .philo__w { opacity: 0.22; }
+  .philo figcaption { color: var(--ink); }
+</style>

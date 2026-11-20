@@ -1,0 +1,139 @@
+---
+// Lightweight interactive illustration (no WebGL): a tuck-lid tray net drawn as a dieline (SVG) and
+// folded in CSS 3D. Panel sizes are in "units" (1 unit = --u px). Behaviour: src/scripts/fold.ts.
+// An illustration of the principle — not a product.
+const W = 160, D = 110, H = 56, T = 34; // base width, base depth, wall height, tuck depth
+const r = 12; // tuck corner radius
+const ox = H, oy = T + D + H; // flat-net origin (top-left of base) inside the SVG
+const vbW = W + 2 * H, vbH = T + D + H + D + H;
+// Outline (cut), clockwise from the tuck's top-left corner.
+const cut = [
+  `M ${ox + 4} ${r}`, `Q ${ox + 4} 0 ${ox + 4 + r} 0`, `H ${ox + W - 4 - r}`, `Q ${ox + W - 4} 0 ${ox + W - 4} ${r}`,
+  `V ${T}`, `H ${ox + W}`, `V ${oy}`, `H ${ox + W + H}`, `V ${oy + D}`, `H ${ox + W}`, `V ${oy + D + H}`,
+  `H ${ox}`, `V ${oy + D}`, `H 0`, `V ${oy}`, `H ${ox}`, `V ${T}`, `H ${ox + 4}`, "Z",
+].join(" ");
+const creases = [
+  { id: "tuck", d: `M ${ox + 4} ${T} H ${ox + W - 4}` },
+  { id: "lid", d: `M ${ox} ${T + D} H ${ox + W}` },
+  { id: "walls", d: `M ${ox} ${oy} H ${ox + W}` },
+  { id: "walls", d: `M ${ox} ${oy + D} H ${ox + W}` },
+  { id: "walls", d: `M ${ox} ${oy} V ${oy + D}` },
+  { id: "walls", d: `M ${ox + W} ${oy} V ${oy + D}` },
+];
+---
+<div class="fold" data-fold style={`--W:${W};--D:${D};--H:${H};--T:${T}`}>
+  <div class="fold__flat">
+    <svg viewBox={`-6 -6 ${vbW + 12} ${vbH + 12}`} role="img" aria-labelledby="fold-flat-title" class="fold__svg">
+      <title id="fold-flat-title">Flat dieline of a tuck-lid tray: solid cut outline, dashed crease lines.</title>
+      <path d={cut} class="fold__cut" />
+      {creases.map((c) => <path d={c.d} class="fold__crease" data-crease={c.id} />)}
+      <text x={ox + W / 2} y={oy + D / 2} class="fold__tag">base</text>
+      <text x={ox + W / 2} y={T + D / 2} class="fold__tag">lid</text>
+      <text x={ox + W / 2} y={T * 0.62} class="fold__tag">tuck</text>
+    </svg>
+    <ul class="fold__legend">
+      <li><span class="fold__key fold__key--cut" aria-hidden="true"></span>Cut</li>
+      <li><span class="fold__key fold__key--crease" aria-hidden="true"></span>Crease</li>
+    </ul>
+  </div>
+
+  <div class="fold__stage" data-fold-stage aria-hidden="true">
+    <div class="fold__scene" data-fold-scene>
+      <div class="p p--base" data-panel="base">
+        <i class="f f--in"></i><i class="f f--out"></i>
+        <div class="p p--front" data-panel="front"><i class="f f--in"></i><i class="f f--out"></i></div>
+        <div class="p p--left" data-panel="left"><i class="f f--in"></i><i class="f f--out"></i></div>
+        <div class="p p--right" data-panel="right"><i class="f f--in"></i><i class="f f--out"></i></div>
+        <div class="p p--back" data-panel="back">
+          <i class="f f--in"></i><i class="f f--out"></i>
+          <div class="p p--lid" data-panel="lid">
+            <i class="f f--in"></i><i class="f f--out"></i>
+            <div class="p p--tuck" data-panel="tuck"><i class="f f--in"></i><i class="f f--out"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="fold__hint">Drag to turn</p>
+  </div>
+
+  <div class="fold__controls">
+    <label class="label" for="fold-range">Fold</label>
+    <input id="fold-range" type="range" min="0" max="100" step="1" value="0" data-fold-range aria-valuetext="Flat" />
+    <output for="fold-range" data-fold-out>0%</output>
+  </div>
+</div>
+
+<style>
+  .fold {
+    --u: 1.25px;
+    display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: clamp(1.5rem, 4vw, 4rem); align-items: center;
+  }
+  .fold__flat { display: grid; gap: 1rem; justify-items: start; }
+  .fold__svg { width: 100%; max-width: 20rem; overflow: visible; }
+  .fold__cut { fill: rgb(245 242 236 / 0.04); stroke: var(--ivory); stroke-width: 1.4; stroke-linejoin: round; }
+  .fold__crease { stroke: var(--brass); stroke-width: 1.4; stroke-dasharray: 5 4; fill: none; transition: stroke 0.3s; }
+  .fold__crease[data-active] { stroke: var(--brass-bright); stroke-width: 2.2; }
+  .fold__tag { fill: rgb(245 242 236 / 0.5); font: 500 9px var(--sans); letter-spacing: 0.2em; text-transform: uppercase; text-anchor: middle; dominant-baseline: middle; }
+  .fold__legend { display: flex; gap: 1.6rem; list-style: none; margin: 0; padding: 0; font-size: var(--step--1); letter-spacing: 0.12em; text-transform: uppercase; }
+  .fold__legend li { display: inline-flex; align-items: center; gap: 0.6rem; }
+  .fold__key { width: 1.8rem; height: 0; border-top: 1.5px solid var(--ivory); }
+  .fold__key--crease { border-top: 1.5px dashed var(--brass); }
+
+  .fold__stage {
+    position: relative; height: clamp(22rem, 38vw, 32rem); perspective: 1400px; perspective-origin: 50% 30%;
+    cursor: grab; touch-action: pan-y; user-select: none;
+    background: radial-gradient(60% 55% at 50% 60%, rgb(166 171 152 / 0.16), transparent 70%);
+  }
+  .fold__stage:active { cursor: grabbing; }
+  .fold__scene {
+    position: absolute; left: 50%; top: 60%; width: 0; height: 0; transform-style: preserve-3d;
+    transform: rotateX(var(--tilt, 58deg)) rotateZ(var(--spin, -28deg));
+  }
+  .p { position: absolute; transform-style: preserve-3d; }
+  .f { position: absolute; inset: 0; backface-visibility: hidden; display: block; }
+  .f::after { content: ""; position: absolute; inset: 0; background: #1a1012; opacity: var(--shade-in, 0); border-radius: inherit; }
+  .f--out::after { opacity: var(--shade-out, 0); }
+  .f--in { background: #efe9dd; box-shadow: inset 0 0 0 1px rgb(40 38 35 / 0.18); }
+  .f--out {
+    transform: rotateY(180deg);
+    background: linear-gradient(135deg, #6a3542, var(--burgundy) 55%, #4c2530);
+    box-shadow: inset 0 0 0 1px rgb(189 165 142 / 0.5);
+  }
+  .p--lid > .f--out::before {
+    content: "EK"; position: absolute; inset: 0; display: grid; place-items: center;
+    font-family: var(--serif); font-size: calc(var(--u) * 40); color: var(--brass-bright); letter-spacing: -0.04em;
+    transform: rotate(180deg);
+  }
+  .p--base { width: calc(var(--u) * var(--W)); height: calc(var(--u) * var(--D)); left: calc(var(--u) * var(--W) / -2); top: calc(var(--u) * var(--D) / -2); }
+  .p--front { width: 100%; height: calc(var(--u) * var(--H)); left: 0; top: 100%; transform-origin: 50% 0; transform: rotateX(calc(var(--a1, 0) * 1deg)); }
+  .p--back { width: 100%; height: calc(var(--u) * var(--H)); left: 0; bottom: 100%; transform-origin: 50% 100%; transform: rotateX(calc(var(--a1, 0) * -1deg)); }
+  .p--left { width: calc(var(--u) * var(--H)); height: 100%; right: 100%; top: 0; transform-origin: 100% 50%; transform: rotateY(calc(var(--a1, 0) * 1deg)); }
+  .p--right { width: calc(var(--u) * var(--H)); height: 100%; left: 100%; top: 0; transform-origin: 0 50%; transform: rotateY(calc(var(--a1, 0) * -1deg)); }
+  .p--lid { width: 100%; height: calc(var(--u) * var(--D)); left: 0; bottom: 100%; transform-origin: 50% 100%; transform: rotateX(calc(var(--a2, 0) * -1deg)); }
+  .p--tuck {
+    width: calc(100% - var(--u) * 8); height: calc(var(--u) * var(--T)); left: calc(var(--u) * 4); bottom: 100%;
+    transform-origin: 50% 100%; transform: rotateX(calc(var(--a3, 0) * -1deg));
+  }
+  .p--tuck > .f { border-radius: calc(var(--u) * 12) calc(var(--u) * 12) 0 0; }
+  .fold__hint {
+    position: absolute; right: 0; bottom: 0; margin: 0; font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase;
+    color: rgb(245 242 236 / 0.55);
+  }
+
+  .fold__controls { grid-column: 1 / -1; display: flex; align-items: center; gap: 1.2rem; max-width: 36rem; }
+  .fold__controls .label { color: var(--brass-bright); }
+  .fold__controls output { font-variant-numeric: tabular-nums; min-width: 3.2rem; text-align: right; font-size: var(--step--1); letter-spacing: 0.08em; }
+  input[type="range"] { flex: 1; appearance: none; -webkit-appearance: none; background: transparent; height: 2.75rem; cursor: pointer; }
+  input[type="range"]::-webkit-slider-runnable-track { height: 1px; background: rgb(245 242 236 / 0.45); }
+  input[type="range"]::-moz-range-track { height: 1px; background: rgb(245 242 236 / 0.45); }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 1.25rem; height: 1.25rem; margin-top: -0.6rem; border-radius: 50%; background: var(--brass-bright); border: 0; }
+  input[type="range"]::-moz-range-thumb { width: 1.25rem; height: 1.25rem; border-radius: 50%; background: var(--brass-bright); border: 0; }
+
+  @media (max-width: 860px) {
+    .fold { grid-template-columns: 1fr; --u: 0.82px; }
+    .fold__flat { grid-template-columns: minmax(0, 11rem) auto; align-items: end; gap: 1.5rem; }
+    .fold__legend { flex-direction: column; gap: 0.6rem; }
+    .fold__stage { height: 21rem; }
+  }
+  @media (max-width: 400px) { .fold { --u: 0.7px; } .fold__stage { height: 18rem; } }
+</style>

@@ -1,0 +1,26 @@
+---
+// EK monogram: Bodoni Moda Bold outlines (OFL) set as a ligature, plus a fold mark — a dashed crease
+// across a folded corner. Paths are animated (stroke draw → fill) by src/scripts/motion.ts.
+import ek from "../assets/monogram/ek.json";
+interface Props { class?: string; title?: string; animated?: boolean }
+const { class: cls = "", title = "EK — Elham Kouhbor monogram", animated = false } = Astro.props;
+const pad = 10;
+const w = ek.width + pad * 2;
+const h = ek.height + pad * 2;
+const c = 22; // folded corner size
+---
+<svg class:list={["monogram", cls]} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={title} data-monogram={animated ? "" : undefined}>
+  <g transform={`translate(${pad} ${pad})`}>
+    <path class="monogram__glyph" d={ek.E} pathLength="1" />
+    <path class="monogram__glyph" d={ek.K} pathLength="1" />
+  </g>
+  <path class="monogram__corner" d={`M ${w - c} 0 H ${w} V ${c} Z`} />
+  <path class="monogram__crease" d={`M ${w - c} 0 L ${w} ${c}`} pathLength="1" />
+</svg>
+
+<style>
+  .monogram { overflow: visible; }
+  .monogram__glyph { fill: currentColor; stroke: currentColor; stroke-width: 0.6; stroke-linejoin: round; }
+  .monogram__corner { fill: var(--burgundy); }
+  .monogram__crease { fill: none; stroke: var(--brass); stroke-width: 1; stroke-dasharray: 0.06 0.04; }
+</style>
