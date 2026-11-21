@@ -1,37 +1,38 @@
 /* Elham Kouhbor — design system.
-   Palette: ivory paper, warm ink, burgundy, sage, brass. Type: Bodoni Moda (optical sizes) + Manrope. */
-@import "@fontsource-variable/bodoni-moda/opsz.css";
-@import "@fontsource-variable/bodoni-moda/opsz-italic.css";
+   Warm paper ground, ink text, clay and sage as quiet accents.
+   Fraunces (optical sizes, light weights) for display; Manrope for text and interface. */
+@import "@fontsource-variable/fraunces/opsz.css";
+@import "@fontsource-variable/fraunces/opsz-italic.css";
 @import "@fontsource-variable/manrope/wght.css";
 
 :root {
-  --ivory: #f5f2ec;
-  --paper: #ece6db;
-  --ink: #282623;
-  --ink-soft: #57524b;
-  --burgundy: #5f303c;
-  --burgundy-deep: #3a1f26;
-  --plum: #2a2224;
-  --sage: #a6ab98;
-  --sage-deep: #6e735f;
-  --brass: #bda58e;
-  --brass-bright: #d8c3a5;
-  --line: rgb(40 38 35 / 0.16);
+  --paper: #f1e2d2;
+  --paper-deep: #e8d8c6;
+  --paper-light: #f7ede2;
+  --ink: #23201d;
+  --ink-soft: #5e574f;
+  --ink-faint: #8a8177;
+  --clay: #b8674a;
+  --clay-deep: #96492f;
+  --sage: #8f9b82;
+  --sage-deep: #5f6b56;
+  --sand: #d8c9b6;
+  --rule: rgb(35 32 29 / 0.14);
 
-  --serif: "Bodoni Moda Variable", "Bodoni Moda", "Didot", "Bodoni 72", "Times New Roman", serif;
+  --serif: "Fraunces Variable", "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --sans: "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --gutter: clamp(1.25rem, 4vw, 4rem);
-  --measure: 34rem;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --gutter: clamp(1.25rem, 5vw, 5rem);
+  --max: 82rem;
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
 
-  --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
-  --step-0: clamp(1rem, 0.96rem + 0.2vw, 1.12rem);
-  --step-1: clamp(1.25rem, 1.12rem + 0.6vw, 1.6rem);
-  --step-2: clamp(1.6rem, 1.3rem + 1.4vw, 2.6rem);
-  --step-3: clamp(2.3rem, 1.6rem + 3.2vw, 4.6rem);
-  --step-4: clamp(3rem, 1.6rem + 6.4vw, 8rem);
-  --step-5: clamp(3.4rem, 0.8rem + 10.5vw, 12.5rem);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: clamp(1rem, 0.97rem + 0.15vw, 1.0625rem);
+  --text-lg: clamp(1.125rem, 1.05rem + 0.35vw, 1.3rem);
+  --display-sm: clamp(1.9rem, 1.5rem + 1.6vw, 2.75rem);
+  --display-md: clamp(2.6rem, 1.8rem + 3.2vw, 4.5rem);
+  --display-lg: clamp(3.4rem, 2rem + 5.8vw, 7.4rem);
 
   color-scheme: light;
 }
@@ -41,83 +42,56 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-behavior: 
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
   margin: 0;
-  background: var(--ivory);
+  background: var(--paper);
   color: var(--ink);
   font-family: var(--sans);
-  font-size: var(--step-0);
-  line-height: 1.65;
-  font-weight: 400;
+  font-size: var(--text-base);
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow-x: clip;
 }
 img, svg { display: block; max-width: 100%; height: auto; }
 a { color: inherit; }
-h1, h2, h3, p, figure, blockquote { margin: 0; }
-::selection { background: var(--burgundy); color: var(--ivory); }
+h1, h2, h3, p, ul, ol, dl, dd, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+::selection { background: var(--sage-deep); color: var(--paper-light); }
 
 :focus { outline: none; }
-:focus-visible { outline: 2px solid var(--burgundy); outline-offset: 4px; border-radius: 2px; }
-.on-dark :focus-visible { outline-color: var(--brass-bright); }
+:focus-visible { outline: 2px solid var(--clay-deep); outline-offset: 4px; border-radius: 2px; }
 
 .skip-link {
   position: fixed; left: 1rem; top: 1rem; z-index: 100;
-  background: var(--ink); color: var(--ivory); padding: 0.7rem 1rem; text-decoration: none;
-  font-size: var(--step--1); letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--ink); color: var(--paper); padding: 0.7rem 1rem; text-decoration: none; font-size: var(--text-sm);
   transform: translateY(-200%); transition: transform 0.3s var(--ease);
 }
 .skip-link:focus { transform: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
-.sr-only {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+.wrap { width: 100%; max-width: var(--max); margin-inline: auto; padding-inline: var(--gutter); }
+
+/* Type */
+.display { font-family: var(--serif); font-optical-sizing: auto; font-weight: 340; line-height: 1.02; letter-spacing: -0.02em; }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 1rem;
+  font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink-soft);
 }
+.eyebrow--rule::after { content: ""; width: 3.5rem; height: 1px; background: var(--clay); }
+.lead { font-size: var(--text-lg); line-height: 1.65; color: var(--ink-soft); max-width: 32rem; }
 
-/* ---------- Typography ---------- */
-.display {
-  font-family: var(--serif);
-  font-optical-sizing: auto;
-  font-weight: 400;
-  line-height: 0.92;
-  letter-spacing: -0.015em;
+/* Links */
+.text-link {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  padding-bottom: 0.35rem; text-decoration: none; font-weight: 500; color: var(--ink);
+  background: linear-gradient(var(--clay), var(--clay)) 0 100% / 100% 1px no-repeat;
+  transition: background-size 0.6s var(--ease), color 0.3s;
 }
-.display em, .italic { font-style: italic; }
-.kicker {
-  display: inline-flex; align-items: center; gap: 0.9rem;
-  font-size: var(--step--1); font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.kicker::before { content: ""; width: 2.5rem; height: 1px; background: currentColor; opacity: 0.6; }
-.on-dark .kicker { color: var(--brass-bright); }
-.lede { font-size: var(--step-1); line-height: 1.55; font-weight: 300; max-width: var(--measure); color: var(--ink-soft); }
-.on-dark .lede { color: rgb(245 242 236 / 0.78); }
-.label {
-  font-size: var(--step--1); letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; color: var(--ink-soft);
-}
+.text-link:hover { background-size: 35% 1px; }
+.text-link .arrow { transition: transform 0.5s var(--ease); }
+.text-link:hover .arrow { transform: translate(2px, -2px); }
+.text-link .arrow--down { display: inline-block; }
+.text-link:hover .arrow--down { transform: translateY(3px); }
 
-/* ---------- Layout ---------- */
-.chapter { position: relative; padding: clamp(6rem, 14vw, 12rem) var(--gutter); }
-.chapter__head { display: grid; gap: clamp(1.5rem, 3vw, 2.5rem); margin-bottom: clamp(3rem, 7vw, 6rem); }
-.chapter__title { font-size: var(--step-4); }
-.chapter__title span { display: block; }
-.chapter__title span + span { padding-left: clamp(1.5rem, 8vw, 9rem); font-style: italic; }
-.on-dark { background: var(--plum); color: var(--ivory); }
-
-.figure-img { width: 100%; height: 100%; object-fit: cover; }
-figcaption { font-size: var(--step--1); line-height: 1.5; color: var(--ink-soft); }
-.on-dark figcaption { color: rgb(245 242 236 / 0.66); }
-figcaption strong { font-weight: 600; color: var(--ink); letter-spacing: 0.02em; }
-.on-dark figcaption strong { color: var(--ivory); }
-
-/* Reveal helpers: hidden only when the animation script is active (html.anim); see Base layout. */
-html.anim [data-reveal] { opacity: 0; transform: translateY(1.75rem); }
-html.anim [data-mask] > span > span { transform: translateY(105%); }
-[data-mask] > span { display: block; overflow: hidden; padding-bottom: 0.08em; margin-bottom: -0.08em; }
-[data-mask] > span > span { display: block; }
-
-.link-underline {
-  text-decoration: none;
-  background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat;
-  transition: background-size 0.5s var(--ease);
-}
-.link-underline:hover { background-size: 0 1px; background-position: 100% 100%; }
+/* Reveal: elements are only pre-hidden once the page script has confirmed motion is allowed. */
+html.reveal-on [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity 1.1s var(--ease), transform 1.1s var(--ease); transition-delay: var(--d, 0s); }
+html.reveal-on [data-reveal].is-in { opacity: 1; transform: none; }

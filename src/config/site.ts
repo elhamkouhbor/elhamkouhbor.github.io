@@ -13,15 +13,15 @@ export interface ContactLinks {
 
 export const site = {
   name: "Elham Kouhbor",
+  /** Production URL (canonical, sitemap, social cards). */
   url: "https://www.elhamkouhbor.com",
   locale: "en",
-  title: "Elham Kouhbor — Digital Design & Visual Exploration",
+  role: "Digital Designer",
+  title: "Elham Kouhbor — Digital Designer",
   description:
-    "Elham Kouhbor — digital design and visual exploration across image, line, layout and structural form. Form. Function. Feeling.",
-  role: "Digital Design & Visual Exploration",
-  tagline: ["Form.", "Function.", "Feeling."],
+    "Elham Kouhbor is a digital designer working across visual communication, layout, interaction and structure — from screen to structure.",
   ogImage: "/og.jpg",
-  themeColor: "#282623",
+  themeColor: "#F1E2D2",
 } as const;
 
 export const contact: ContactLinks = {
@@ -34,20 +34,17 @@ export const contact: ContactLinks = {
 
 /** Rendered contact links, in display order; null entries are skipped. */
 export function contactLinks(): { label: string; href: string; handle: string }[] {
+  const strip = (u: string) => u.replace(/^https?:\/\/(www\.)?/, "");
   const out: { label: string; href: string; handle: string }[] = [];
-  if (contact.github) out.push({ label: "GitHub", href: contact.github, handle: contact.github.replace(/^https?:\/\/(www\.)?/, "") });
+  if (contact.github) out.push({ label: "GitHub", href: contact.github, handle: strip(contact.github) });
   if (contact.email) out.push({ label: "Email", href: `mailto:${contact.email}`, handle: contact.email });
-  if (contact.linkedin) out.push({ label: "LinkedIn", href: contact.linkedin, handle: contact.linkedin.replace(/^https?:\/\/(www\.)?/, "") });
-  if (contact.instagram) out.push({ label: "Instagram", href: contact.instagram, handle: contact.instagram.replace(/^https?:\/\/(www\.)?/, "") });
-  if (contact.behance) out.push({ label: "Behance", href: contact.behance, handle: contact.behance.replace(/^https?:\/\/(www\.)?/, "") });
+  if (contact.linkedin) out.push({ label: "LinkedIn", href: contact.linkedin, handle: strip(contact.linkedin) });
+  if (contact.instagram) out.push({ label: "Instagram", href: contact.instagram, handle: strip(contact.instagram) });
+  if (contact.behance) out.push({ label: "Behance", href: contact.behance, handle: strip(contact.behance) });
   return out;
 }
 
-export const chapters = [
-  { id: "arrival", n: "01", title: "Arrival" },
-  { id: "studies", n: "02", title: "Form & Expression" },
-  { id: "flat-to-form", n: "03", title: "Flat to Form" },
-  { id: "disciplines", n: "04", title: "Disciplines" },
-  { id: "philosophy", n: "05", title: "Philosophy" },
-  { id: "contact", n: "06", title: "Contact" },
+export const nav = [
+  { href: "#work", label: "Work" },
+  { href: "#practice", label: "Practice" },
 ] as const;

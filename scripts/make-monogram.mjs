@@ -29,5 +29,5 @@ writeFileSync("src/assets/monogram/ek.json", JSON.stringify(out, null, 2) + "\n"
 // Favicon: ink tile, ivory letters, a burgundy folded corner (the dieline motif)
 const pad = 26, W = out.width + pad * 2, H = out.height + pad * 2, S = Math.max(W, H);
 const ox = (S - out.width) / 2, oy = (S - out.height) / 2, c = S * 0.26;
-writeFileSync("public/favicon.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r(S)} ${r(S)}"><title>Elham Kouhbor</title><rect width="${r(S)}" height="${r(S)}" rx="${r(S * 0.12)}" fill="#282623"/><g fill="#F5F2EC" transform="translate(${r(ox)} ${r(oy)})"><path d="${out.E}"/><path d="${out.K}"/></g><path d="M${r(S - c)} 0H${r(S)}V${r(c)}Z" fill="#5F303C"/><path d="M${r(S - c)} 0L${r(S)} ${r(c)}" stroke="#BDA58E" stroke-width="${r(S * 0.012)}" stroke-dasharray="${r(S * 0.03)} ${r(S * 0.02)}"/></svg>\n`);
+writeFileSync("public/favicon.svg", `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r(S)} ${r(S)}"><title>Elham Kouhbor</title><rect width="${r(S)}" height="${r(S)}" rx="${r(S * 0.12)}" fill="#23201D"/><g fill="#F2EBE2" transform="translate(${r(ox)} ${r(oy)})"><path d="${out.E}"/><path d="${out.K}"/></g><path d="M${r(S - c)} 0H${r(S)}V${r(c)}Z" fill="#B8674A"/></svg>\n`);
 console.log(`monogram ${out.width} × ${out.height}`);

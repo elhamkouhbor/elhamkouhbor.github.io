@@ -1,0 +1,63 @@
+---
+import { Picture } from "astro:assets";
+import { hero } from "../content/content";
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero__art" aria-hidden="true">
+    <Picture
+      src={hero.image}
+      alt={hero.alt}
+      formats={["avif", "webp"]}
+      widths={[700, 1000, 1400, 1900, 2800]}
+      sizes="(max-width: 820px) 100vw, 66vw"
+      loading="eager"
+      fetchpriority="high"
+      class="hero__img"
+    />
+  </div>
+  <div class="hero__text wrap">
+    <p class="eyebrow eyebrow--rule hero__in" style="--i:0">{hero.kicker}</p>
+    <h1 id="hero-title" class="hero__title display">
+      <span class="hero__in" style="--i:1">Elham</span>
+      <span class="hero__in" style="--i:2">Kouhbor</span>
+    </h1>
+    <p class="lead hero__in" style="--i:3">{hero.intro}</p>
+    <a class="text-link hero__in" style="--i:4" href={hero.cta.href}>{hero.cta.label} <span class="arrow arrow--down" aria-hidden="true">↓</span></a>
+  </div>
+</section>
+
+<style>
+  .hero { position: relative; min-height: min(100svh, 62rem); display: grid; align-items: center; overflow: hidden; }
+  .hero__art {
+    position: absolute; inset: 0 0 0 auto; width: 68%;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, #000 30%), linear-gradient(to top, transparent 0%, #000 14%);
+    -webkit-mask-composite: source-in; mask-image: linear-gradient(to right, transparent 0%, #000 30%), linear-gradient(to top, transparent 0%, #000 14%);
+    mask-composite: intersect;
+  }
+  .hero__art :global(picture) { display: block; height: 100%; }
+  .hero__art :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: 72% 50%; }
+  .hero__text { position: relative; display: grid; justify-items: start; gap: clamp(1.4rem, 2.6vw, 2rem); padding-block: 8rem 6rem; }
+  .hero__title { font-size: var(--display-lg); font-weight: 320; line-height: 0.95; letter-spacing: -0.035em; }
+  .hero__title span { display: block; }
+  .hero .lead { max-width: 27rem; }
+
+  /* Intro: a calm, staggered settle (only when motion is allowed). */
+  :global(html.intro) .hero__in { animation: rise 1.4s var(--ease) both; animation-delay: calc(0.25s + var(--i) * 0.12s); }
+  :global(html.intro) .hero__art { animation: fade 2.4s var(--ease) both; }
+  :global(html.intro) .hero__art :global(img) { animation: settle 7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes settle { from { transform: scale(1.045); } }
+
+  @media (max-width: 820px) {
+    .hero { min-height: 0; align-items: end; }
+    .hero__art {
+      position: relative; inset: auto; width: 100%; height: 62svh; max-height: 34rem; grid-row: 1;
+      -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 30%); mask-image: linear-gradient(to top, transparent 0%, #000 30%);
+    }
+    .hero__art :global(img) { object-position: 70% 40%; }
+    .hero__text { grid-row: 2; margin-top: -5rem; padding-block: 0 4.5rem; }
+    .hero__title { font-size: clamp(3.2rem, 15vw, 5rem); }
+  }
+</style>

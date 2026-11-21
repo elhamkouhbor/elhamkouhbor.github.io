@@ -200,112 +200,132 @@ export interface ArtSpec {
   camera: { pos: [number, number, number]; target: [number, number, number]; fov: number };
   key: { dir: [number, number, number]; intensity: number; softness: number; color?: string };
   dome: { fraction: number; intensity: number };
-  fill: number; env: number; exposure: number; samples: number; bg: string; grain?: number; vignette?: number;
+  fill: number; env: number; exposure: number; samples: number; bg: string; grain?: number; vignette?: number; shadowExtent?: number;
 }
+
+// ---- soft-light set (2026-11 redesign): paper ribbons + dappled leaf shadows
+const P2 = { cream: "#EFE6DA", creamLit: "#F4ECE2", clay: "#B8674A", clayDeep: "#9E5238", sage: "#8F9B82", sageDeep: "#66735C", sand: "#E3D6C5" };
+
+/** A paper band: centreline through `pts`, width along a (twisting) cross direction. Front/back get different colours. */
+function ribbon(pts: [number, number, number][], o: { width: number; twist?: number; tilt?: number; front: string; back: string; seg?: number; across?: [number, number, number] }) {
+  const curve = new THREE.CatmullRomCurve3(pts.map((p) => v(...p)), false, "centripetal");
+  const seg = o.seg ?? 260, ws = 24, P: number[] = [], UV: number[] = [], I: number[] = [];
+  const across0 = v(...(o.across ?? [0, 0, 1])).normalize();
+  const len = curve.getLength();
+  for (let i = 0; i <= seg; i++) {
+    const u = i / seg, c = curve.getPointAt(u), t = curve.getTangentAt(u);
+    let a = across0.clone().sub(t.clone().multiplyScalar(across0.dot(t))).normalize();
+    a.applyAxisAngle(t, (o.tilt ?? 0) + (o.twist ?? 0) * Math.sin(u * Math.PI));
+    for (let j = 0; j <= ws; j++) {
+      const w = (j / ws - 0.5) * o.width, p = c.clone().add(a.clone().multiplyScalar(w));
+      P.push(p.x, p.y, p.z); UV.push(u * len, (j / ws) * o.width);
+    }
+  }
+  for (let i = 0; i < seg; i++) for (let j = 0; j < ws; j++) {
+    const k = i * (ws + 1) + j; I.push(k, k + ws + 1, k + 1, k + 1, k + ws + 1, k + ws + 2);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I); g.computeVertexNormals();
+  const grp = new THREE.Group();
+  const f = mesh(g, paper(o.front, { side: THREE.FrontSide, shadowSide: THREE.DoubleSide }));
+  const bk = mesh(g, paper(o.back, { side: THREE.BackSide, shadowSide: THREE.DoubleSide }));
+  grp.add(f, bk); return grp;
+}
+
+/** Invisible branch silhouette that only casts shadows (a gobo), placed along the key-light path. */
+function branch(seed: number, o: { at: [number, number, number]; normal: [number, number, number]; size: number; leaves?: number; spin?: number }) {
+  let sd = seed * 9301 + 49297; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  const shapes: THREE.BufferGeometry[] = [];
+  const leaf = (x: number, y: number, ang: number, L: number) => {
+    const sh = new THREE.Shape(); const W = L * (0.32 + rnd() * 0.12);
+    sh.moveTo(0, 0); sh.quadraticCurveTo(W, L * 0.45, 0, L); sh.quadraticCurveTo(-W, L * 0.45, 0, 0);
+    const g = new THREE.ShapeGeometry(sh, 10); g.rotateZ(ang); g.translate(x, y, 0); shapes.push(g);
+  };
+  const stem = (x: number, y: number, ang: number, L: number, depth: number) => {
+    const steps = 14; let px = x, py = y, a = ang;
+    for (let s = 0; s < steps; s++) {
+      const nx = px + Math.cos(a) * (L / steps), ny = py + Math.sin(a) * (L / steps);
+      const sw = 1.6 * (1 - s / steps) + 0.6; const g = new THREE.PlaneGeometry(Math.hypot(nx - px, ny - py), sw);
+      g.rotateZ(a); g.translate((px + nx) / 2, (py + ny) / 2, 0); shapes.push(g);
+      if (s > 2 && rnd() < 0.85) { const side = s % 2 ? 1 : -1; leaf(nx, ny, a - Math.PI / 2 + side * (0.6 + rnd() * 0.5), L * (0.16 + rnd() * 0.1)); }
+      if (depth > 0 && s > 3 && rnd() < 0.18) stem(nx, ny, a + (rnd() < 0.5 ? 1 : -1) * (0.5 + rnd() * 0.4), L * 0.5, depth - 1);
+      a += (rnd() - 0.5) * 0.22; px = nx; py = ny;
+    }
+    leaf(px, py, a - Math.PI / 2, L * 0.2);
+  };
+  const n = o.leaves ?? 3;
+  for (let k = 0; k < n; k++) stem(-o.size * 0.5 + rnd() * o.size * 0.3, -o.size * 0.4 + rnd() * o.size * 0.8, (rnd() - 0.5) * 0.9, o.size * (0.7 + rnd() * 0.4), 2);
+  const g = mergeGeometries(shapes.map((x) => x.index ? x.toNonIndexed() : x));
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }));
+  m.castShadow = true; m.receiveShadow = false;
+  m.position.set(...o.at); m.lookAt(v(...o.at).add(v(...o.normal))); m.rotateZ(o.spin ?? 0);
+  return m;
+}
+/** Point `dist` units from `target` toward the (normalised) key direction. */
+const along = (target: [number, number, number], dir: [number, number, number], dist: number): [number, number, number] => {
+  const d = v(...dir).normalize(); return [target[0] + d.x * dist, target[1] + d.y * dist, target[2] + d.z * dist];
+};
+
+const HERO_KEY: [number, number, number] = [-0.45, 0.62, 0.64];
+const HERO_GOBO: [number, number, number] = [0.62, 0.62, 0.48];
+const STAGE_KEY: [number, number, number] = [-0.55, 0.6, 0.58];
 
 export const ARTWORKS: ArtSpec[] = [
   {
-    name: "pleat-nocturne", width: 1500, height: 1900, bg: "#2A2224",
+    name: "hero-ribbon", width: 2800, height: 1700, bg: P2.cream, shadowExtent: 1300,
     build: (s) => {
-      s.add(sweep("#3A2B2F"));
-      const g = miura({ nx: 24, ny: 14, w: 12, l: 20, h: 10, d: 7, t: 0.45, bend: 3.3 });
-      g.computeBoundingBox(); const bb = g.boundingBox!; g.translate(-(bb.min.x + bb.max.x) / 2, -bb.min.y, -(bb.min.z + bb.max.z) / 2);
-      const m = mesh(g, paper(C.paper)); m.rotation.set(0, -0.55, 0); m.position.set(0, 0, 0); s.add(m);
+      s.add(sweep(P2.cream, 9000, 2600, 2000, 420));
+      // broad sheet: lies on the floor (cream side up), lifts into a tall wave and curls back over itself
+      s.add(ribbon([[-2600, 1, 2900], [-1700, 1, 1900], [-900, 1, 820], [-420, 6, 300], [-120, 90, 200], [80, 300, 160], [120, 560, 120], [-20, 760, 90], [-260, 820, 70], [-470, 700, 70], [-520, 520, 90]],
+        { width: 1050, twist: 0.22, tilt: 0.12, front: P2.creamLit, back: P2.clay, across: [0.25, 0, 1] }));
+      s.add(ribbon([[1800, 1, 380], [1000, 1, 360], [600, 30, 320], [430, 200, 280], [480, 380, 230], [680, 430, 200], [880, 330, 200]],
+        { width: 520, twist: -0.25, front: P2.creamLit, back: P2.sage, across: [-0.2, 0, 1] }));
+      s.add(branch(7, { at: along([-200, 400, 0], HERO_KEY, 1000), normal: HERO_KEY, size: 1300, leaves: 5, spin: 0.6 }));
     },
-    camera: { pos: [-150, 70, 700], target: [0, 150, 0], fov: 27 },
-    key: { dir: [0.8, 0.38, 0.47], intensity: 4.4, softness: 0.04, color: "#ffecd6" }, dome: { fraction: 0.2, intensity: 1.0 },
-    fill: 0.08, env: 0.06, exposure: 1.2, samples: 112, grain: 0.022, vignette: 0.36,
+    camera: { pos: [-250, 1000, 3900], target: [-500, 330, 0], fov: 30 },
+    key: { dir: HERO_KEY, intensity: 3.2, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.6 },
+    fill: 1.25, env: 0.28, exposure: 1.04, samples: 128, grain: 0.012, vignette: 0.0,
   },
   {
-    name: "pleat-ivory", width: 2400, height: 1400, bg: "#ECE6DB",
+    name: "stage-sage", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000,
     build: (s) => {
-      s.add(sweep("#ECE5D9"));
-      const g = miura({ nx: 46, ny: 14, w: 15, l: 24, h: 9, d: 8, t: 0.45 });
-      g.computeBoundingBox(); const bb = g.boundingBox!; g.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, 0);
-      const m = mesh(g, paper(C.paper)); m.rotation.set(-Math.PI / 2, 0, 0.18); m.position.set(0, 0, 40); s.add(m);
+      s.add(sweep(P2.sand, 4000, 1800, 1600, 360));
+      s.add(ribbon([[-1400, 1, 420], [-800, 1, 380], [-460, 20, 300], [-300, 200, 160], [-360, 460, 20], [-560, 620, -100]],
+        { width: 1100, twist: 0.12, front: P2.creamLit, back: P2.sage, across: [0.35, 0, 1] }));
+      s.add(branch(21, { at: along([200, 300, -200], STAGE_KEY, 800), normal: STAGE_KEY, size: 900, leaves: 4, spin: -0.4 }));
     },
-    camera: { pos: [-60, 250, 330], target: [0, 0, 20], fov: 30 },
-    key: { dir: [-0.95, 0.32, -0.1], intensity: 3.4, softness: 0.05, color: "#fff4e6" }, dome: { fraction: 0.35, intensity: 1.2 },
-    fill: 0.18, env: 0.12, exposure: 1.0, samples: 96, grain: 0.018, vignette: 0.22,
+    camera: { pos: [0, 520, 2100], target: [0, 330, 0], fov: 32 },
+    key: { dir: STAGE_KEY, intensity: 2.9, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.1 },
+    fill: 0.6, env: 0.16, exposure: 1.06, samples: 96, grain: 0.012, vignette: 0.04,
   },
   {
-    name: "fan-burgundy", width: 1600, height: 2000, bg: "#EEE7DC",
+    name: "stage-clay", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000,
     build: (s) => {
-      s.add(sweep("#EDE6DA"));
-      const g = fan({ n: 34, r0: 26, r1: 175, lift: 0.08, arc: Math.PI * 0.98, t: 0.5 });
-      const m = mesh(g, paper(C.burgundy, { roughness: 0.78, sheen: 0.5, sheenColor: new THREE.Color("#c99aa4") })); m.rotation.set(0, 0.32, 0); m.position.set(0, 0, 0); s.add(m);
+      s.add(sweep(P2.cream, 4000, 1800, 1600, 360));
+      s.add(ribbon([[1400, 1, 420], [800, 1, 380], [460, 20, 300], [300, 200, 160], [360, 460, 20], [560, 620, -100]],
+        { width: 1100, twist: -0.12, front: P2.clay, back: P2.creamLit, across: [-0.35, 0, 1] }));
+      s.add(branch(33, { at: along([-200, 300, -200], [0.55, 0.6, 0.58], 800), normal: [0.55, 0.6, 0.58], size: 900, leaves: 4, spin: 0.3 }));
     },
-    camera: { pos: [130, 150, 640], target: [0, 105, 0], fov: 24 },
-    key: { dir: [0.75, 0.8, 0.55], intensity: 3.0, softness: 0.09, color: "#fff2e2" }, dome: { fraction: 0.35, intensity: 1.1 },
-    fill: 0.15, env: 0.1, exposure: 1.0, samples: 96, grain: 0.02, vignette: 0.25,
+    camera: { pos: [0, 520, 2100], target: [0, 330, 0], fov: 32 },
+    key: { dir: [0.55, 0.6, 0.58], intensity: 2.9, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.1 },
+    fill: 0.6, env: 0.16, exposure: 1.06, samples: 96, grain: 0.012, vignette: 0.04,
   },
   {
-    name: "brass-ribbon", width: 1600, height: 1600, bg: "#24221F",
+    name: "closing-waves", width: 2800, height: 1000, bg: P2.cream, shadowExtent: 1300,
     build: (s) => {
-      s.add(sweep("#2B2925"));
-      const g = miura({ nx: 12, ny: 9, w: 14, l: 20, h: 9, d: 6, t: 0.5, bend: 1.4 });
-      g.computeBoundingBox(); const bb = g.boundingBox!; g.translate(-(bb.min.x + bb.max.x) / 2, -(bb.min.y + bb.max.y) / 2, -(bb.min.z + bb.max.z) / 2);
-      g.computeBoundingBox(); const r = g.boundingBox!.getSize(new THREE.Vector3()).length() / 2;
-      const m = mesh(g, brass()); m.scale.setScalar(120 / r); m.rotation.set(-0.75, 0.5, 0.35); m.position.set(0, 95, 30); s.add(m);
+      s.add(sweep(P2.cream, 6000, 2000, 1600, 400));
+      s.add(ribbon([[-1700, 1, 300], [-1100, 1, 300], [-800, 120, 260], [-560, 300, 200], [-260, 340, 160], [40, 200, 160], [300, 40, 200], [600, 1, 240]],
+        { width: 900, twist: 0.15, front: P2.creamLit, back: P2.sage, across: [0.2, 0, 1] }));
+      s.add(ribbon([[1700, 1, 380], [1200, 1, 360], [950, 110, 320], [760, 230, 280], [560, 200, 280]],
+        { width: 600, twist: -0.2, front: P2.clay, back: P2.creamLit, across: [-0.2, 0, 1] }));
+      s.add(branch(45, { at: along([0, 250, 0], HERO_KEY, 900), normal: HERO_KEY, size: 1000, leaves: 4, spin: 1.2 }));
     },
-    camera: { pos: [40, 210, 600], target: [0, 92, 30], fov: 26 },
-    key: { dir: [-0.6, 0.85, 0.5], intensity: 3.0, softness: 0.12, color: "#fff0dc" }, dome: { fraction: 0.3, intensity: 0.8 },
-    fill: 0.1, env: 0.9, exposure: 1.0, samples: 96, grain: 0.02, vignette: 0.34,
-  },
-  {
-    name: "cut-rings", width: 1600, height: 2000, bg: "#E9E5DA",
-    build: (s) => {
-      const base = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), new THREE.MeshStandardMaterial({ color: new THREE.Color("#E6E1D5"), roughness: 0.95 }));
-      base.rotation.x = -Math.PI / 2; base.receiveShadow = true; s.add(base);
-      const cols = [C.sage, C.paper, C.sage, C.burgundy, C.brass, C.paper, C.sage];
-      for (let k = 0; k < 7; k++) {
-        const r1 = 150 - k * 17, r0 = r1 - 11;
-        const g = ring(r0, r1, 0.5 + k * 0.08, k * 0.9 + 0.4, 2.2);
-        const mat = cols[k] === C.brass ? brass() : paper(cols[k]);
-        const m = mesh(g, mat); m.rotation.x = -Math.PI / 2; m.position.set(Math.sin(k) * 4, 2 + k * 2.6, Math.cos(k * 1.3) * 4); s.add(m);
-      }
-    },
-    camera: { pos: [0, 760, 210], target: [0, 0, 10], fov: 30 },
-    key: { dir: [-0.75, 0.55, -0.35], intensity: 3.2, softness: 0.05, color: "#fff3e4" }, dome: { fraction: 0.3, intensity: 1.0 },
-    fill: 0.15, env: 0.1, exposure: 1.0, samples: 96, grain: 0.018, vignette: 0.24,
-  },
-  {
-    name: "carton-study", width: 2000, height: 1400, bg: "#A7AC99",
-    build: (s) => {
-      s.add(sweep("#A9AE9B"));
-      const flat = mesh(carton({ L: 70, W: 34, H: 120, t: 0.6, fold: 0 }), paper(C.paper)); flat.rotation.set(-Math.PI / 2, 0, 0.12); flat.position.set(-250, 0.7, 120); s.add(flat);
-      const half = mesh(carton({ L: 70, W: 34, H: 120, t: 0.6, fold: 0.5 }), paper(C.paper)); half.rotation.set(0, 0.35, 0); half.position.set(-10, 0, 10); s.add(half);
-      const done = mesh(carton({ L: 70, W: 34, H: 120, t: 0.6, fold: 1 }), paper(C.paper)); done.rotation.set(0, -0.5, 0); done.position.set(170, 0, -50); s.add(done);
-    },
-    camera: { pos: [-60, 330, 700], target: [-40, 40, 20], fov: 31 },
-    key: { dir: [-0.7, 0.75, 0.3], intensity: 3.0, softness: 0.06, color: "#fff4e6" }, dome: { fraction: 0.35, intensity: 1.0 },
-    fill: 0.15, env: 0.12, exposure: 1.0, samples: 96, grain: 0.018, vignette: 0.22,
-  },
-  {
-    name: "ek-paper", width: 1600, height: 2000, bg: "#EEE8DD",
-    build: (s) => {
-      s.add(sweep("#EDE7DB"));
-      const g = monogram(2.4, 14);
-      const m = mesh(g, paper(C.paper)); m.rotation.set(0, 0.32, 0); m.position.set(0, 0, 0); s.add(m);
-    },
-    camera: { pos: [-90, 150, 980], target: [0, 92, 0], fov: 24 },
-    key: { dir: [-0.55, 0.5, 0.85], intensity: 3.3, softness: 0.05, color: "#fff2e2" }, dome: { fraction: 0.3, intensity: 1.0 },
-    fill: 0.15, env: 0.1, exposure: 1.0, samples: 96, grain: 0.02, vignette: 0.26,
-  },
-  {
-    name: "emboss-grazing", width: 1800, height: 1200, bg: "#EEE8DD",
-    build: (s) => {
-      const g = embossed(900, 640, 1100, 1.0);
-      const mat = paper(C.paper, { roughness: 0.9 }); (mat.normalMap as THREE.Texture).repeat.set(30, 21); // plane UVs are 0–1
-      const m = new THREE.Mesh(g, mat); m.receiveShadow = false; m.castShadow = false; m.rotation.x = -Math.PI / 2; s.add(m);
-    },
-    camera: { pos: [0, 330, 240], target: [0, 0, 6], fov: 30 },
-    key: { dir: [-1, 0.16, -0.25], intensity: 3.6, softness: 0.04, color: "#fff2e2" }, dome: { fraction: 0.2, intensity: 0.8 },
-    fill: 0.2, env: 0.1, exposure: 1.0, samples: 80, grain: 0.016, vignette: 0.28,
+    camera: { pos: [0, 640, 2600], target: [0, 230, 0], fov: 30 },
+    key: { dir: HERO_KEY, intensity: 3.0, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.1 },
+    fill: 0.6, env: 0.16, exposure: 1.06, samples: 96, grain: 0.012, vignette: 0.0,
   },
 ];
 
-// ---- accumulation renderer
 const hash = (n: number) => { const x = Math.sin(n * 91.345) * 47453.5453; return x - Math.floor(x); };
 export async function renderArt(spec: ArtSpec, scaleDown = 1): Promise<string> {
   const W = Math.round(spec.width / scaleDown), H = Math.round(spec.height / scaleDown);
@@ -320,7 +340,7 @@ export async function renderArt(spec: ArtSpec, scaleDown = 1): Promise<string> {
   const hemi = new THREE.HemisphereLight(0xfff7ec, 0x6d6457, spec.fill); scene.add(hemi);
   const key = new THREE.DirectionalLight(new THREE.Color(spec.key.color ?? "#ffffff"), spec.key.intensity);
   key.castShadow = true; key.shadow.mapSize.set(4096, 4096); key.shadow.bias = -0.0002; key.shadow.normalBias = 0.6; key.shadow.radius = 2;
-  const sc = key.shadow.camera; sc.left = -520; sc.right = 520; sc.top = 520; sc.bottom = -520; sc.near = 10; sc.far = 3000;
+  const ex = spec.shadowExtent ?? 520; const sc = key.shadow.camera; sc.left = -ex; sc.right = ex; sc.top = ex; sc.bottom = -ex; sc.near = 10; sc.far = 3000;
   const target = new THREE.Object3D(); target.position.set(0, 60, 0); scene.add(target); key.target = target; scene.add(key);
   const cam = new THREE.PerspectiveCamera(spec.camera.fov, W / H, 1, 6000);
   cam.position.set(...spec.camera.pos); cam.lookAt(new THREE.Vector3(...spec.camera.target));

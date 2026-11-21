@@ -33,9 +33,12 @@ check(!/cacao/i.test(html), "no classroom exercise (CACAO NOIR) featured");
 check(!/mailto:|tel:|instagram\.com|behance\.net|linkedin\.com/i.test(html), "no unverified contact details");
 const external = [...html.matchAll(/href="(https?:[^"]+)"/g)].map((m) => m[1]).filter((u) => !u.startsWith(SITE) && !u.startsWith("https://schema.org"));
 check(external.every((u) => u === "https://github.com/elhamkouhbor"), "only verified external link (GitHub)", external.join(", "));
-check(/Conceptual stud/i.test(text) && /not client work/i.test(text), "studies clearly labelled as conceptual, not client work");
+check(html.includes('href="/fold/"') && html.includes('href="/Dieline/"'), "project links point at the live Fold and Dieline tools");
+check(/Digital Designer/.test(text), "introduces her as a Digital Designer");
+check(!/<img[^>]*(portrait|profile)/i.test(html), "no portrait imagery");
 check(!/https?:\/\/(?!www\.elhamkouhbor\.com|schema\.org|github\.com\/elhamkouhbor|www\.w3\.org)[^"' )]+\.(jpe?g|png|webp|avif|gif)/i.test(html), "no hotlinked images");
-for (const h of ["Arrival", "A Study in", "From Flat", "Visual Alchemy", "Precision in Every Line", "The Art of Arrangement", "Let’s Create"]) check(text.includes(h), `section copy: ${h}`);
+for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Practice", "Photoshop", "Illustrator", "InDesign", "CAD", "Let’s create something meaningful."]) check(text.includes(h), `copy present: ${h}`);
+check(!/skill|expert|master|%<\//i.test(text), "no skill bars, percentages or expert labels");
 
 // ---------- Browser checks ----------
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
@@ -91,45 +94,18 @@ for (const vp of viewports) for (const reduced of [false, true]) {
   check(r.noAlt === 0, "every image has alt text");
   check(r.formats.includes("avif") || r.formats.includes("webp"), `modern image formats served (${r.formats.join(", ")})`);
   check(r.hidden === 0, "all revealed content visible after scrolling", `${r.hidden} still hidden`);
-  check(r.fonts.some((f) => /Bodoni/.test(f)) && r.fonts.some((f) => /Manrope/.test(f)), "Bodoni Moda + Manrope loaded");
+  check(r.fonts.some((f) => /Fraunces/.test(f)) && r.fonts.some((f) => /Manrope/.test(f)), "Fraunces + Manrope loaded");
   check(r.anchors.length === 0, "all in-page anchors resolve", r.anchors.join(", "));
   if (reduced) check(!r.animClass, "reduced motion: animation gate off");
   check(errors.length === 0, "no console errors", errors.slice(0, 3).join(" | "));
   check(badResponses.length === 0, "no failed requests", badResponses.slice(0, 3).join(", "));
 
-  // Fold demo responds to the slider.
-  const fold = await page.evaluate(async () => {
-    const range = document.querySelector("[data-fold-range]");
-    const scene = document.querySelector("[data-fold-scene]");
-    range.scrollIntoView({ block: "center" });
-    range.value = "100"; range.dispatchEvent(new Event("input", { bubbles: true }));
-    const closed = [scene.style.getPropertyValue("--a1"), scene.style.getPropertyValue("--a3"), range.getAttribute("aria-valuetext")];
-    range.value = "0"; range.dispatchEvent(new Event("input", { bubbles: true }));
-    return { closed, flat: scene.style.getPropertyValue("--a1") };
-  });
-  check(fold.closed[0] === "90.00" && Number(fold.closed[1]) > 80 && fold.closed[2] === "Folded and closed" && fold.flat === "0.00", "fold demo: slider folds and unfolds the net");
-
-  if (!reduced) {
-    // Lightbox opens with a study, closes with Escape and returns focus.
-    await page.locator("[data-open-study]").nth(1).scrollIntoViewIfNeeded();
-    await page.locator("[data-open-study]").nth(1).click();
-    await page.waitForTimeout(400);
-    const open = await page.evaluate(() => {
-      const d = document.querySelector("[data-lightbox]"), img = d.querySelector("img");
-      return d.open && img.complete && img.naturalWidth > 0 && img.alt.length > 10;
-    });
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(200);
-    const closed = await page.evaluate(() => !document.querySelector("[data-lightbox]").open && document.activeElement?.hasAttribute("data-open-study"));
-    check(open && closed, "lightbox: opens with large image, Escape closes, focus restored");
-
-    // Chapter menu.
-    await page.click("[data-menu-toggle]");
-    const menuOpen = await page.evaluate(() => document.querySelector("[data-menu]").hasAttribute("data-open") && document.activeElement?.closest("[data-menu]") != null);
-    await page.click('[data-menu] a[href="#philosophy"]');
-    await page.waitForTimeout(1500);
-    const chapter = await page.evaluate(() => document.querySelector("[data-chapter-n]")?.textContent);
-    check(menuOpen && (vp.name === "mobile" || chapter === "05"), "chapter menu: opens, focuses, navigates", `chapter=${chapter}`);
+  // Primary navigation reaches each section.
+  for (const id of ["work", "practice"]) {
+    await page.click(`header a[href="#${id}"]`);
+    await page.waitForTimeout(reduced ? 150 : 900);
+    const top = await page.evaluate((id) => Math.round(document.getElementById(id).getBoundingClientRect().top), id);
+    check(Math.abs(top) < 40, `nav link #${id} scrolls to its section`, `top=${top}`);
   }
   await ctx.close();
 }
@@ -138,7 +114,7 @@ for (const vp of viewports) for (const reduced of [false, true]) {
 const ctx = await browser.newContext();
 const p404 = await ctx.newPage();
 const res = await p404.goto(base + "/does-not-exist");
-check(res.status() === 404 && (await p404.textContent("h1"))?.includes("folded away"), "\n  404 page served");
+check(res.status() === 404 && ((await p404.textContent("h1")) ?? "").includes("folded away"), "404 page served");
 await browser.close();
 server.close();
 

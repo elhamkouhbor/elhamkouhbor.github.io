@@ -1,141 +1,86 @@
-// Editorial copy and image metadata. All imagery is original: procedural digital studies rendered by
-// scripts/art (paper, fold and light). They are conceptual studies — never client or commissioned work.
+// Page copy and image metadata.
+// Project descriptions are written from the live tools (see the links); project images are screenshots
+// of those tools. Background compositions are original renders from scripts/art.
 import type { ImageMetadata } from "astro";
-import pleatNocturne from "../assets/art/pleat-nocturne.jpg";
-import pleatIvory from "../assets/art/pleat-ivory.jpg";
-import fanBurgundy from "../assets/art/fan-burgundy.jpg";
-import brassRibbon from "../assets/art/brass-ribbon.jpg";
-import cutRings from "../assets/art/cut-rings.jpg";
-import cartonStudy from "../assets/art/carton-study.jpg";
-import ekPaper from "../assets/art/ek-paper.jpg";
-import embossGrazing from "../assets/art/emboss-grazing.jpg";
-
-export interface Study {
-  id: string;
-  image: ImageMetadata;
-  title: string;
-  subject: string;
-  alt: string;
-  /** Focal point used for art-directed crops (CSS object-position). */
-  focus?: string;
-}
+import heroRibbon from "../assets/art/hero-ribbon.jpg";
+import stageSage from "../assets/art/stage-sage.jpg";
+import stageClay from "../assets/art/stage-clay.jpg";
+import closingWaves from "../assets/art/closing-waves.jpg";
+import foldShot from "../assets/projects/fold-studio.jpg";
+import dielineShot from "../assets/projects/dieline-creator.jpg";
 
 export const hero = {
-  image: pleatNocturne,
-  alt: "Conceptual study: a column of ivory paper folded into a herringbone pleat, lit from one side against a deep plum background.",
+  kicker: "Digital Designer",
+  intro: "I design digital experiences and visual communication — from screen to structure, with care for clarity, form and the small details in between.",
+  cta: { href: "#work", label: "Selected work" },
+  image: heroRibbon,
+  alt: "", // decorative composition: sheets of clay and cream paper curling in soft, leaf-dappled light
 };
 
-export const studiesIntro = {
-  kicker: "Chapter 02",
-  title: ["A Study in", "Form & Expression"],
-  lede:
-    "Paper remembers every decision made to it. These studies follow a single sheet through pleat, fan, cut and emboss — asking how little light it takes for a surface to become an object, and an object to become a feeling.",
-  label: "Conceptual studies · digital renders exploring paper, fold and light · not client work",
-};
+export interface Project {
+  id: string;
+  n: string;
+  title: string;
+  name: string;
+  summary: string;
+  details: string[];
+  meta: { label: string; value: string }[];
+  link: { href: string; label: string };
+  shot: ImageMetadata;
+  shotAlt: string;
+  stage: ImageMetadata;
+}
 
-/** The study that expands to full width as it scrolls into view. */
-export const featureStudy: Study = {
-  id: "pleat-ivory",
-  image: pleatIvory,
-  title: "Study I — Rhythm",
-  subject: "A Miura pleat: one sheet, one repeated decision, two hundred facets of light.",
-  alt: "Conceptual study: a wide ivory sheet folded in a precise zig-zag pleat, its facets alternating between light and shadow.",
-  focus: "50% 45%",
-};
-
-export const studies: Study[] = [
+export const projects: Project[] = [
   {
-    id: "fan-burgundy",
-    image: fanBurgundy,
-    title: "Study II — Radiance",
-    subject: "A pleated fan in deep burgundy, opening like a held breath.",
-    alt: "Conceptual study: a burgundy paper fan folded in fine radial pleats, opened into a semicircle on ivory.",
-    focus: "50% 55%",
+    id: "fold",
+    n: "01",
+    title: "Fold",
+    name: "Fold Studio",
+    summary: "Exploring how flat structures become three-dimensional form.",
+    details: [
+      "A browser workspace that reads a flat dieline as SVG, finds its panels and creases, and folds it into a 3D object.",
+      "Print, foil, spot-UV and emboss artwork can be layered onto the board, and the assembly is choreographed on an editable timeline.",
+    ],
+    meta: [
+      { label: "Format", value: "Web application" },
+      { label: "Focus", value: "Structure, 3D preview, interaction" },
+    ],
+    link: { href: "/fold/", label: "Open Fold Studio" },
+    shot: foldShot,
+    shotAlt: "Fold Studio in the browser: a tea carton folded in 3D at the centre, panel tools on the left, hinge angles on the right and an eight-step assembly timeline below.",
+    stage: stageSage,
   },
   {
-    id: "brass-ribbon",
-    image: brassRibbon,
-    title: "Study III — Lustre",
-    subject: "The same pleat in brushed brass — structure rendered as ornament.",
-    alt: "Conceptual study: a folded sheet of brass catching warm highlights on a dark ground.",
-  },
-  {
-    id: "cut-rings",
-    image: cutRings,
-    title: "Study IV — Interval",
-    subject: "Concentric cuts in sage, ivory, burgundy and brass; measured spacing, quiet colour.",
-    alt: "Conceptual study: concentric paper rings in sage, ivory, burgundy and brass, seen from above with soft shadows.",
-    focus: "50% 50%",
-  },
-  {
-    id: "ek-paper",
-    image: ekPaper,
-    title: "Study V — Signature",
-    subject: "The EK monogram, cut from thick stock and standing in raking light.",
-    alt: "Conceptual study: the letters E and K cut from thick ivory board, standing upright and casting soft shadows.",
-    focus: "50% 50%",
-  },
-  {
-    id: "emboss-grazing",
-    image: embossGrazing,
-    title: "Study VI — Touch",
-    subject: "A blind emboss under grazing light: a pattern you notice with the fingertips first.",
-    alt: "Conceptual study: an ivory sheet with a blind-embossed geometric pattern revealed by low, grazing light.",
+    id: "dieline",
+    n: "02",
+    title: "Dieline",
+    name: "Dieline Creator",
+    summary: "Precise packaging geometry, drawn and checked in the browser.",
+    details: [
+      "Choose a construction, set dimensions and board, and the drawing follows: cut, crease and glue lines with measured panels.",
+      "Preflight checks, a 3D fold preview, sheet layout and SVG, DXF and PDF export sit beside the drawing — or start from a blank sheet.",
+    ],
+    meta: [
+      { label: "Format", value: "Web application" },
+      { label: "Focus", value: "Layout, geometry, technical drawing" },
+    ],
+    link: { href: "/Dieline/", label: "Open Dieline Creator" },
+    shot: dielineShot,
+    shotAlt: "Dieline Creator in the browser: a measured tray-with-lid dieline with dashed crease lines at the centre, dimension fields on the left and a folded 3D preview beside it.",
+    stage: stageClay,
   },
 ];
 
-export const flatToForm = {
-  kicker: "Chapter 03",
-  title: ["From Flat", "to Form"],
-  lede:
-    "Every box begins as a drawing that has to work twice: as a flat sheet that can be printed, cut and creased, and as an object that folds into its final shape. A dieline is where graphic design meets geometry.",
-  points: [
-    { term: "Cut", text: "Solid lines — where the blade goes through the board." },
-    { term: "Crease", text: "Dashed lines — where the board is scored so it folds cleanly." },
-    { term: "Tolerance", text: "Board thickness, flap clearances and glue areas, drawn to the millimetre." },
-  ],
-  demoTitle: "A tuck-lid tray, folded",
-  demoNote: "Interactive illustration — drag the slider, or scroll, to fold the flat net into a box.",
-  image: cartonStudy,
-  imageAlt: "Conceptual study: three identical cartons on a sage ground — lying flat, half-folded and closed.",
-  imageCaption: "Study VII — Sequence. Flat, half-folded, closed: one net, three moments.",
-};
-
-export const disciplines = [
-  {
-    n: "01",
-    title: "Visual Alchemy",
-    tool: "Adobe Photoshop",
-    text: "Light, texture and atmosphere — composing images in which every surface carries mood as well as information.",
-  },
-  {
-    n: "02",
-    title: "Precision in Every Line",
-    tool: "Adobe Illustrator",
-    text: "Vector drawing where curves are deliberate and nothing is approximate: marks, letterforms and technical artwork.",
-  },
-  {
-    n: "03",
-    title: "The Art of Arrangement",
-    tool: "Adobe InDesign",
-    text: "Grids, hierarchy and pacing — typography arranged so a page reads clearly before it is even read.",
-  },
-  {
-    n: "04",
-    title: "From Flat to Form",
-    tool: "CAD & structural design",
-    text: "Dielines, cut and crease geometry and folding sequences — packaging thought through in two and three dimensions.",
-  },
-] as const;
-
-export const philosophy = {
-  kicker: "Chapter 05",
-  quote: "Good design is felt before it is understood. Form gives it presence, function gives it purpose — and feeling is what makes it stay.",
-  attribution: "Design philosophy",
+export const practice = {
+  title: "Practice",
+  statement:
+    "A cross-disciplinary practice in which image, typography and structure are considered together — so that what people see, read and use feels clear, calm and intentional.",
+  disciplines: ["Visual Design", "Editorial Layout", "Interaction", "Digital Media", "Visual Communication"],
+  tools: ["Photoshop", "Illustrator", "InDesign", "CAD"],
 };
 
 export const closing = {
-  kicker: "Chapter 06",
-  title: ["Let’s Create", "Something Beautiful."],
-  lede: "Ideas, collaborations and conversations about form are always welcome.",
+  title: "Let’s create something meaningful.",
+  image: closingWaves,
 };

@@ -1,0 +1,27 @@
+---
+import { contact, nav, site } from "../config/site";
+---
+<header class="top wrap">
+  <a class="top__name" href="/" aria-label={`${site.name}, home`}>{site.name}</a>
+  <nav aria-label="Primary">
+    <ul class="top__nav">
+      {nav.map((n) => <li><a href={n.href}>{n.label}</a></li>)}
+      {contact.github && <li><a href={contact.github} rel="me noopener">GitHub<span class="sr-only"> (opens GitHub profile)</span> <span aria-hidden="true">↗</span></a></li>}
+    </ul>
+  </nav>
+</header>
+
+<style>
+  .top {
+    position: absolute; inset: 0 0 auto 0; z-index: 10;
+    display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+    padding-block: calc(1.6rem + env(safe-area-inset-top)) 1.6rem;
+  }
+  .top__name { font-family: var(--serif); font-size: 1.3rem; font-weight: 400; letter-spacing: -0.01em; text-decoration: none; }
+  .top__nav { display: flex; gap: clamp(1.1rem, 3vw, 2.6rem); font-size: var(--text-sm); }
+  .top__nav a { text-decoration: none; position: relative; padding-block: 0.4rem; }
+  .top__nav a::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--clay); transform: scaleX(0); transform-origin: right; transition: transform 0.5s var(--ease); }
+  .top__nav a:hover::after { transform: scaleX(1); transform-origin: left; }
+
+  @media (max-width: 420px) { .top__nav { gap: 1rem; } .top__name { font-size: 1.15rem; } }
+</style>

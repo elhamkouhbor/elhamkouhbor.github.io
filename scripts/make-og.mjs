@@ -10,34 +10,24 @@ const font = (pkg, match) => {
   const dir = `${root}/node_modules/${pkg}/files`;
   return `data:font/woff2;base64,${readFileSync(`${dir}/${readdirSync(dir).find((f) => match.test(f))}`).toString("base64")}`;
 };
-const bodoni = font("@fontsource-variable/bodoni-moda", /latin-opsz-normal\.woff2$/);
-const bodoniItalic = font("@fontsource-variable/bodoni-moda", /latin-opsz-italic\.woff2$/);
+const serif = font("@fontsource-variable/fraunces", /^fraunces-latin-opsz-normal\.woff2$/);
 const manrope = font("@fontsource-variable/manrope", /latin-wght-normal\.woff2$/);
-const art = `data:image/jpeg;base64,${(await sharp(`${root}/src/assets/art/pleat-nocturne.jpg`).resize(520).jpeg({ quality: 90 }).toBuffer()).toString("base64")}`;
-const ek = JSON.parse(readFileSync(`${root}/src/assets/monogram/ek.json`, "utf8"));
+const art = `data:image/jpeg;base64,${(await sharp(`${root}/src/assets/art/hero-ribbon.jpg`).resize(1400).jpeg({ quality: 88 }).toBuffer()).toString("base64")}`;
 
 const html = `<!doctype html><meta charset="utf-8"><style>
-@font-face { font-family: B; src: url(${bodoni}); font-weight: 400 900; }
-@font-face { font-family: B; src: url(${bodoniItalic}); font-style: italic; font-weight: 400 900; }
+@font-face { font-family: F; src: url(${serif}); font-weight: 100 900; }
 @font-face { font-family: M; src: url(${manrope}); font-weight: 200 800; }
 html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
-body { background: #F5F2EC; color: #282623; display: grid; grid-template-columns: 1fr 430px; font-family: M; }
-.l { padding: 64px 0 60px 72px; display: flex; flex-direction: column; justify-content: space-between; }
-svg { width: 120px; }
-h1 { margin: 0; font-family: B; font-weight: 400; font-size: 112px; line-height: .86; text-transform: uppercase; letter-spacing: -.01em; }
-h1 span { display: block; padding-left: .42em; font-style: italic; text-transform: none; color: #5F303C; letter-spacing: -.02em; }
-p { margin: 0; font-size: 15px; letter-spacing: .26em; text-transform: uppercase; font-weight: 600; color: #57524B; }
-.t { margin-top: 14px; font-family: B; font-style: italic; font-size: 30px; letter-spacing: 0; text-transform: none; font-weight: 400; color: #282623; }
-.t i:nth-child(2) { color: #6E735F; } .t i:nth-child(3) { color: #5F303C; }
-.r { background: #2A2224 url(${art}) center 40% / cover; }
+body { position: relative; background: #F1E2D2; color: #23201D; font-family: M; }
+.art { position: absolute; inset: 0 0 0 auto; width: 800px; background: url(${art}) 70% 50% / cover;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 35%); }
+.t { position: absolute; left: 80px; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; gap: 30px; }
+p { margin: 0; font-size: 15px; letter-spacing: .28em; text-transform: uppercase; font-weight: 600; color: #5E574F; display: flex; align-items: center; gap: 18px; }
+p::after { content: ""; width: 56px; height: 1px; background: #B8674A; }
+h1 { margin: 0; font-family: F; font-weight: 320; font-size: 118px; line-height: .95; letter-spacing: -.035em; font-optical-sizing: auto; }
 </style>
-<div class="l">
-  <svg viewBox="0 0 ${ek.width + 20} ${ek.height + 20}"><g transform="translate(10 10)" fill="#282623"><path d="${ek.E}"/><path d="${ek.K}"/></g>
-  <path d="M ${ek.width - 2} 0 H ${ek.width + 20} V 22 Z" fill="#5F303C"/></svg>
-  <div><h1>Elham<span>Kouhbor</span></h1></div>
-  <div><p>Digital Design &amp; Visual Exploration</p><p class="t"><i>Form.</i> <i>Function.</i> <i>Feeling.</i></p></div>
-</div>
-<div class="r"></div>`;
+<div class="art"></div>
+<div class="t"><p>Digital Designer</p><h1>Elham<br>Kouhbor</h1></div>`;
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
