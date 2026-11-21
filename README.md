@@ -36,22 +36,30 @@ Only add contact details once they are confirmed — nothing is shown for empty 
 
 ## Images
 
-- **Project images** (`src/assets/projects/`) are screenshots of the live tools, Fold Studio
-  (`/fold/`) and Dieline Creator (`/Dieline/`). Retake them when the tools change.
-- **Background compositions** (`src/assets/art/`) are original renders: sheets of paper curling in soft,
-  leaf-dappled light, built procedurally in `scripts/art/` (three.js, rendered offline in headless
-  Chromium; the leaf light comes from an invisible branch that only casts shadows).
+All images are rendered by `scripts/art/` (three.js scenes rendered offline in headless Chromium:
+accumulated soft light, warm floor bounce, depth of field, paper tooth and thickness, and leaf
+shadows cast by an invisible branch).
+
+- `hero-ribbon`, `closing-waves`: curling sheets of clay, cream and sage paper.
+- `project-fold`, `project-dieline`: the **real application screenshots** in
+  `src/assets/projects/` shown on a slim panel, each with one physical object (a sage paper carton for
+  Fold, a print of the same tray layout for Dieline). `render.mjs` crops the screenshots
+  (see `assets` there). Retake the screenshots when the tools change, then re-render.
 
 ```bash
-npm run art                      # re-render every composition into src/assets/art/*.jpg
-node scripts/art/render.mjs hero-ribbon --preview   # quick 1/3-size preview into node_modules/.cache/art
+npm run art                      # re-render everything into src/assets/art/*.jpg
+node scripts/art/render.mjs project-fold --preview   # quick 1/3-size preview into node_modules/.cache/art
 npm run og                       # public/og.jpg social card + PNG icons from public/favicon.svg
 npm run monogram                 # EK outlines (src/assets/monogram/ek.json) + public/favicon.svg
 ```
 
 The JPEG masters are converted at build time by `astro:assets` into responsive AVIF/WebP sets.
-To add a project: put a screenshot in `src/assets/projects/`, import it in `src/content/content.ts` and
-add an entry to `projects` (title, truthful summary, details, link, descriptive alt text).
+
+## Writing
+
+Copy lives in `src/content/content.ts`. Keep it short and plain: describe what a project does for
+people, not how it is built. Visible text uses no em dashes, en dashes or semicolons, and
+`npm test` checks this (including alt text and meta descriptions).
 
 ## Deployment
 

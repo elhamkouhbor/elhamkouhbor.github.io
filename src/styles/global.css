@@ -92,6 +92,12 @@ ul, ol { padding: 0; list-style: none; }
 .text-link .arrow--down { display: inline-block; }
 .text-link:hover .arrow--down { transform: translateY(3px); }
 
+.text-link--quiet { color: var(--ink-soft); font-weight: 400; background-image: linear-gradient(var(--rule), var(--rule)); }
+.text-link--quiet:hover { color: var(--ink); }
+
 /* Reveal: elements are only pre-hidden once the page script has confirmed motion is allowed. */
 html.reveal-on [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity 1.1s var(--ease), transform 1.1s var(--ease); transition-delay: var(--d, 0s); }
+html.reveal-on [data-reveal="img"] { transform: none; transition-duration: 1.4s; }
+html.reveal-on [data-reveal="img"] :is(img) { transform: scale(1.035); transition: transform 2.2s var(--ease); }
 html.reveal-on [data-reveal].is-in { opacity: 1; transform: none; }
+html.reveal-on [data-reveal="img"].is-in :is(img) { transform: none; }

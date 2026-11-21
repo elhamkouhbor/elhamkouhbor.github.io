@@ -15,6 +15,13 @@ const page = await browser.newPage();
 page.on("console", (m) => { if (m.type() === "error") console.error("page:", m.text()); });
 page.on("pageerror", (e) => console.error("pageerror:", e.message));
 await page.goto(`file://${cache}/index.html`);
+// Real application screenshots (src/assets/projects) cropped to their key region, for the project compositions.
+const crop = async (file, [x, y, w, h]) => `data:image/jpeg;base64,${(await sharp(file).extract({ left: x, top: y, width: w, height: h }).jpeg({ quality: 95 }).toBuffer()).toString("base64")}`;
+const assets = {
+  "fold-shot": await crop("src/assets/projects/fold-studio.jpg", [504, 0, 1872, 1170]),
+  "dieline-shot": await crop("src/assets/projects/dieline-creator.jpg", [504, 72, 1872, 1170]),
+};
+await page.evaluate((a) => { window.ART_ASSETS = a; }, assets);
 const names = await page.evaluate(() => ART.ARTWORKS.map((a) => a.name));
 const outDir = preview ? `${cache}/preview` : resolve("src/assets/art"); mkdirSync(outDir, { recursive: true });
 for (const name of names.filter((n) => !only.length || only.includes(n))) {

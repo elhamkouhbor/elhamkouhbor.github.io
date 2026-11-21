@@ -9,6 +9,7 @@ const year = new Date().getFullYear();
   <div class="wrap closing__inner">
     <span class="closing__rule" aria-hidden="true" data-reveal></span>
     <h2 id="closing-title" class="closing__title display" data-reveal>{closing.title}</h2>
+    <p class="closing__text" data-reveal style="--d:.05s">{closing.text}</p>
     {links.length > 0 && (
       <ul class="closing__links" data-reveal style="--d:.1s">
         {links.map((l) => (
@@ -28,7 +29,7 @@ const year = new Date().getFullYear();
 
 <footer class="footer wrap">
   <p>© {year} {site.name}</p>
-  <p class="footer__note">Project images are screenshots of the live tools. Background compositions are original digital renders.</p>
+  <p class="footer__note">Project images show the real applications. All other images are original digital renders.</p>
   <a href="#main" class="footer__top">Back to top <span aria-hidden="true">↑</span></a>
 </footer>
 
@@ -37,6 +38,7 @@ const year = new Date().getFullYear();
   .closing__inner { position: relative; z-index: 1; display: grid; justify-items: start; gap: 1.6rem; }
   .closing__rule { width: 3.5rem; height: 1px; background: var(--clay); }
   .closing__title { font-size: var(--display-md); max-width: 15ch; line-height: 1.04; }
+  .closing__text { color: var(--ink-soft); max-width: 30rem; margin-top: -0.4rem; }
   .closing__links { display: grid; gap: 0.8rem; margin-top: 0.6rem; }
   .closing__handle { color: var(--ink-faint); font-weight: 400; font-size: var(--text-sm); margin-left: 0.4rem; }
   .closing__art {

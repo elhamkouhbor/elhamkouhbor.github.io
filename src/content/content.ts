@@ -1,34 +1,36 @@
 // Page copy and image metadata.
-// Project descriptions are written from the live tools (see the links); project images are screenshots
-// of those tools. Background compositions are original renders from scripts/art.
+//
+// Writing rules for visible copy: short, plain sentences. No em dashes, en dashes or semicolons
+// (scripts/test-site.mjs checks this). Describe what the projects do, not how they are built.
+//
+// Project images are renders that show the real application screenshots (src/assets/projects) on a
+// panel, composed with one physical object. The background compositions are original renders from
+// scripts/art.
 import type { ImageMetadata } from "astro";
 import heroRibbon from "../assets/art/hero-ribbon.jpg";
-import stageSage from "../assets/art/stage-sage.jpg";
-import stageClay from "../assets/art/stage-clay.jpg";
+import projectFold from "../assets/art/project-fold.jpg";
+import projectDieline from "../assets/art/project-dieline.jpg";
 import closingWaves from "../assets/art/closing-waves.jpg";
-import foldShot from "../assets/projects/fold-studio.jpg";
-import dielineShot from "../assets/projects/dieline-creator.jpg";
 
 export const hero = {
   kicker: "Digital Designer",
-  intro: "I design digital experiences and visual communication — from screen to structure, with care for clarity, form and the small details in between.",
-  cta: { href: "#work", label: "Selected work" },
+  intro: "Hi, I’m Elham. I’m a digital designer interested in visual communication, interactive experiences and the small details that make a design work.",
+  cta: { href: "#work", label: "See selected work" },
   image: heroRibbon,
-  alt: "", // decorative composition: sheets of clay and cream paper curling in soft, leaf-dappled light
 };
 
 export interface Project {
   id: string;
   n: string;
   title: string;
-  name: string;
   summary: string;
-  details: string[];
+  body: string;
   meta: { label: string; value: string }[];
   link: { href: string; label: string };
-  shot: ImageMetadata;
-  shotAlt: string;
-  stage: ImageMetadata;
+  source: string;
+  image: ImageMetadata;
+  alt: string;
+  caption: string;
 }
 
 export const projects: Project[] = [
@@ -36,51 +38,48 @@ export const projects: Project[] = [
     id: "fold",
     n: "01",
     title: "Fold",
-    name: "Fold Studio",
-    summary: "Exploring how flat structures become three-dimensional form.",
-    details: [
-      "A browser workspace that reads a flat dieline as SVG, finds its panels and creases, and folds it into a 3D object.",
-      "Print, foil, spot-UV and emboss artwork can be layered onto the board, and the assembly is choreographed on an editable timeline.",
-    ],
+    summary: "An interactive workspace for seeing how a flat packaging design takes shape in 3D.",
+    body: "Open a flat layout, add the artwork and fold it step by step. The finished box can be turned and checked from every side before anything is printed.",
     meta: [
-      { label: "Format", value: "Web application" },
-      { label: "Focus", value: "Structure, 3D preview, interaction" },
+      { label: "Type", value: "Web application" },
+      { label: "Focus", value: "Interaction, 3D, structure" },
     ],
-    link: { href: "/fold/", label: "Open Fold Studio" },
-    shot: foldShot,
-    shotAlt: "Fold Studio in the browser: a tea carton folded in 3D at the centre, panel tools on the left, hinge angles on the right and an eight-step assembly timeline below.",
-    stage: stageSage,
+    link: { href: "/fold/", label: "Open Fold" },
+    source: "https://github.com/elhamkouhbor/fold",
+    image: projectFold,
+    alt: "The Fold workspace on a screen leaning against a warm paper wall. A folded tea carton turns in the 3D view. A small sage paper carton stands beside the screen.",
+    caption: "Fold running in the browser, with a paper carton for scale.",
   },
   {
     id: "dieline",
     n: "02",
     title: "Dieline",
-    name: "Dieline Creator",
-    summary: "Precise packaging geometry, drawn and checked in the browser.",
-    details: [
-      "Choose a construction, set dimensions and board, and the drawing follows: cut, crease and glue lines with measured panels.",
-      "Preflight checks, a 3D fold preview, sheet layout and SVG, DXF and PDF export sit beside the drawing — or start from a blank sheet.",
-    ],
+    summary: "A drawing tool for precise packaging layouts, from first measurements to print-ready files.",
+    body: "Pick a box style, enter the measurements and the layout is drawn to scale. Built-in checks and a folded preview help catch problems before the files go to print or cutting.",
     meta: [
-      { label: "Format", value: "Web application" },
-      { label: "Focus", value: "Layout, geometry, technical drawing" },
+      { label: "Type", value: "Web application" },
+      { label: "Focus", value: "Layout, measurement, production" },
     ],
-    link: { href: "/Dieline/", label: "Open Dieline Creator" },
-    shot: dielineShot,
-    shotAlt: "Dieline Creator in the browser: a measured tray-with-lid dieline with dashed crease lines at the centre, dimension fields on the left and a folded 3D preview beside it.",
-    stage: stageClay,
+    link: { href: "/Dieline/", label: "Open Dieline" },
+    source: "https://github.com/elhamkouhbor/Dieline",
+    image: projectDieline,
+    alt: "The Dieline tool on a screen showing a measured tray layout and its folded preview. A printed sheet of the same layout lies on the floor in front of it.",
+    caption: "A tray layout in Dieline, next to a print of the same drawing.",
   },
 ];
 
 export const practice = {
   title: "Practice",
-  statement:
-    "A cross-disciplinary practice in which image, typography and structure are considered together — so that what people see, read and use feels clear, calm and intentional.",
-  disciplines: ["Visual Design", "Editorial Layout", "Interaction", "Digital Media", "Visual Communication"],
-  tools: ["Photoshop", "Illustrator", "InDesign", "CAD"],
+  statement: "I work on digital design and visual communication. I care about clear typography, calm layouts and interfaces that are easy to understand.",
+  note: "My projects often move between the screen and physical things, like the packaging tools shown above.",
+  interestsLabel: "Interests",
+  interests: ["Digital design", "Visual communication", "Typography", "Layout", "Interactive experiences"],
+  toolsLabel: "Tools",
+  tools: ["Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "CAD"],
 };
 
 export const closing = {
-  title: "Let’s create something meaningful.",
+  title: "Thanks for visiting.",
+  text: "You can find more of my work and follow new projects on GitHub.",
   image: closingWaves,
 };

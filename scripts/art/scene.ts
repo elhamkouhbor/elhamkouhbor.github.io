@@ -45,9 +45,28 @@ function fibreNormalMap(size = 1024, strength = 1.0) {
 }
 let FIBRE: THREE.Texture | null = null;
 const fibre = () => (FIBRE ??= fibreNormalMap());
+let MOTTLE: THREE.Texture | null = null;
+/** Low-contrast albedo variation (cloudy formation of real paper), multiplies the base colour. */
+function mottle(size = 512) {
+  if (MOTTLE) return MOTTLE;
+  const c = document.createElement("canvas"); c.width = c.height = size; const x = c.getContext("2d")!;
+  x.fillStyle = "#fff"; x.fillRect(0, 0, size, size);
+  let sd = 7; const r = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+  for (let i = 0; i < 1400; i++) {
+    const px = r() * size, py = r() * size, rad = 6 + r() * 26, a = 0.004 + r() * 0.006;
+    for (const [dx, dy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) {
+      const g = x.createRadialGradient(px + dx, py + dy, 0, px + dx, py + dy, rad);
+      g.addColorStop(0, `rgba(120,95,70,${a})`); g.addColorStop(1, "rgba(120,95,70,0)");
+      x.fillStyle = g; x.fillRect(px + dx - rad, py + dy - rad, rad * 2, rad * 2);
+    }
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return (MOTTLE = t);
+}
 function paper(color: string, o: Partial<THREE.MeshPhysicalMaterialParameters> = {}) {
   const n = fibre().clone(); n.repeat.set(0.035, 0.035); n.needsUpdate = true;
-  return new THREE.MeshPhysicalMaterial({ color: new THREE.Color(color), roughness: 0.86, sheen: 0.35, sheenRoughness: 0.9, sheenColor: new THREE.Color("#ffffff"), normalMap: n, normalScale: new THREE.Vector2(0.35, 0.35), ...o });
+  const m = mottle().clone(); m.repeat.set(0.0022, 0.0022); m.needsUpdate = true;
+  return new THREE.MeshPhysicalMaterial({ color: new THREE.Color(color), map: m, roughness: 0.88, sheen: 0.4, sheenRoughness: 0.85, sheenColor: new THREE.Color("#fff8ef"), normalMap: n, normalScale: new THREE.Vector2(0.5, 0.5), ...o });
 }
 const brass = () => new THREE.MeshPhysicalMaterial({ color: new THREE.Color("#C9A97E"), metalness: 1, roughness: 0.24, clearcoat: 0.3, clearcoatRoughness: 0.25, envMapIntensity: 9 });
 
@@ -196,8 +215,10 @@ function sweep(color: string, w = 2000, d = 1200, h = 900, r = 260) {
 
 export interface ArtSpec {
   name: string; width: number; height: number;
-  build: (scene: THREE.Scene) => void;
-  camera: { pos: [number, number, number]; target: [number, number, number]; fov: number };
+  build: (scene: THREE.Scene, tex: Record<string, THREE.Texture>) => void;
+  camera: { pos: [number, number, number]; target: [number, number, number]; fov: number; aperture?: number; focus?: [number, number, number] };
+  /** Image assets (keys of window.ART_ASSETS, supplied by render.mjs) loaded as textures before build. */
+  textures?: string[];
   key: { dir: [number, number, number]; intensity: number; softness: number; color?: string };
   dome: { fraction: number; intensity: number };
   fill: number; env: number; exposure: number; samples: number; bg: string; grain?: number; vignette?: number; shadowExtent?: number;
@@ -206,30 +227,48 @@ export interface ArtSpec {
 // ---- soft-light set (2026-11 redesign): paper ribbons + dappled leaf shadows
 const P2 = { cream: "#EFE6DA", creamLit: "#F4ECE2", clay: "#B8674A", clayDeep: "#9E5238", sage: "#8F9B82", sageDeep: "#66735C", sand: "#E3D6C5" };
 
-/** A paper band: centreline through `pts`, width along a (twisting) cross direction. Front/back get different colours. */
-function ribbon(pts: [number, number, number][], o: { width: number; twist?: number; tilt?: number; front: string; back: string; seg?: number; across?: [number, number, number] }) {
+/** A paper band with real thickness: centreline through `pts`, width along a (twisting) cross direction.
+ *  Front/back faces get different colours; the cut edges are their own strip so they catch the light. */
+function ribbon(pts: [number, number, number][], o: { width: number; twist?: number; tilt?: number; front: string; back: string; seg?: number; across?: [number, number, number]; thick?: number; frontMap?: THREE.Texture; edge?: string }) {
   const curve = new THREE.CatmullRomCurve3(pts.map((p) => v(...p)), false, "centripetal");
-  const seg = o.seg ?? 260, ws = 24, P: number[] = [], UV: number[] = [], I: number[] = [];
+  const seg = o.seg ?? 260, ws = 24, len = curve.getLength(), th = o.thick ?? 2.2;
   const across0 = v(...(o.across ?? [0, 0, 1])).normalize();
-  const len = curve.getLength();
+  const grid: V[][] = [], nrm: V[][] = [];
   for (let i = 0; i <= seg; i++) {
     const u = i / seg, c = curve.getPointAt(u), t = curve.getTangentAt(u);
-    let a = across0.clone().sub(t.clone().multiplyScalar(across0.dot(t))).normalize();
+    const a = across0.clone().sub(t.clone().multiplyScalar(across0.dot(t))).normalize();
     a.applyAxisAngle(t, (o.tilt ?? 0) + (o.twist ?? 0) * Math.sin(u * Math.PI));
-    for (let j = 0; j <= ws; j++) {
-      const w = (j / ws - 0.5) * o.width, p = c.clone().add(a.clone().multiplyScalar(w));
-      P.push(p.x, p.y, p.z); UV.push(u * len, (j / ws) * o.width);
+    const n = t.clone().cross(a).normalize();
+    grid.push([]); nrm.push([]);
+    for (let j = 0; j <= ws; j++) { grid[i].push(c.clone().add(a.clone().multiplyScalar((j / ws - 0.5) * o.width))); nrm[i].push(n); }
+  }
+  const surface = (off: number, flip: boolean) => {
+    const P: number[] = [], UV: number[] = [], I: number[] = [];
+    for (let i = 0; i <= seg; i++) for (let j = 0; j <= ws; j++) {
+      const p = grid[i][j].clone().add(nrm[i][j].clone().multiplyScalar(off));
+      P.push(p.x, p.y, p.z); UV.push((i / seg) * len, (j / ws) * o.width);
     }
-  }
-  for (let i = 0; i < seg; i++) for (let j = 0; j < ws; j++) {
-    const k = i * (ws + 1) + j; I.push(k, k + ws + 1, k + 1, k + 1, k + ws + 1, k + ws + 2);
-  }
-  const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
-  g.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I); g.computeVertexNormals();
+    for (let i = 0; i < seg; i++) for (let j = 0; j < ws; j++) {
+      const k = i * (ws + 1) + j;
+      if (flip) I.push(k, k + 1, k + ws + 1, k + 1, k + ws + 2, k + ws + 1); else I.push(k, k + ws + 1, k + 1, k + 1, k + ws + 1, k + ws + 2);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(UV, 2)); g.setIndex(I); g.computeVertexNormals(); return g;
+  };
+  // edge strips: long edges (j = 0, ws) and the two ends (i = 0, seg)
+  const E: number[] = [];
+  const quad = (p: V, q: V, np: V, nq: V) => {
+    const p2 = p.clone().add(np.clone().multiplyScalar(-th)), q2 = q.clone().add(nq.clone().multiplyScalar(-th));
+    E.push(...p.toArray(), ...q.toArray(), ...q2.toArray(), ...p.toArray(), ...q2.toArray(), ...p2.toArray());
+  };
+  for (let i = 0; i < seg; i++) { quad(grid[i][0], grid[i + 1][0], nrm[i][0], nrm[i + 1][0]); quad(grid[i + 1][ws], grid[i][ws], nrm[i + 1][ws], nrm[i][ws]); }
+  for (let j = 0; j < ws; j++) { quad(grid[0][j + 1], grid[0][j], nrm[0][j + 1], nrm[0][j]); quad(grid[seg][j], grid[seg][j + 1], nrm[seg][j], nrm[seg][j + 1]); }
+  const eg = new THREE.BufferGeometry(); eg.setAttribute("position", new THREE.Float32BufferAttribute(E, 3)); eg.computeVertexNormals();
   const grp = new THREE.Group();
-  const f = mesh(g, paper(o.front, { side: THREE.FrontSide, shadowSide: THREE.DoubleSide }));
-  const bk = mesh(g, paper(o.back, { side: THREE.BackSide, shadowSide: THREE.DoubleSide }));
-  grp.add(f, bk); return grp;
+  const fm = paper(o.front, { side: THREE.DoubleSide });
+  if (o.frontMap) { const m = o.frontMap.clone(); m.repeat.set(1 / len, 1 / o.width); m.wrapS = m.wrapT = THREE.ClampToEdgeWrapping; m.needsUpdate = true; fm.map = m; }
+  grp.add(mesh(surface(0, false), fm), mesh(surface(-th, true), paper(o.back, { side: THREE.DoubleSide })), mesh(eg, paper(o.edge ?? "#f4ece2", { side: THREE.DoubleSide, normalMap: null })));
+  return grp;
 }
 
 /** Invisible branch silhouette that only casts shadows (a gobo), placed along the key-light path. */
@@ -261,6 +300,41 @@ function branch(seed: number, o: { at: [number, number, number]; normal: [number
   m.position.set(...o.at); m.lookAt(v(...o.at).add(v(...o.normal))); m.rotateZ(o.spin ?? 0);
   return m;
 }
+
+/** Slim frameless panel showing a real application screenshot (front face = image, lit like a matte screen). */
+function screenPanel(shot: THREE.Texture, W: number, H: number, depth = 12, r = 9) {
+  const sh = new THREE.Shape(), x0 = -W / 2, y0 = -H / 2;
+  sh.moveTo(x0 + r, y0); sh.lineTo(x0 + W - r, y0); sh.quadraticCurveTo(x0 + W, y0, x0 + W, y0 + r); sh.lineTo(x0 + W, y0 + H - r);
+  sh.quadraticCurveTo(x0 + W, y0 + H, x0 + W - r, y0 + H); sh.lineTo(x0 + r, y0 + H); sh.quadraticCurveTo(x0, y0 + H, x0, y0 + H - r);
+  sh.lineTo(x0, y0 + r); sh.quadraticCurveTo(x0, y0, x0 + r, y0);
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 1.2, bevelSegments: 3, curveSegments: 10 });
+  const t = shot.clone(); t.repeat.set(1 / W, 1 / H); t.offset.set(0.5, 0.5); t.needsUpdate = true;
+  const face = new THREE.MeshPhysicalMaterial({ color: "#f2f2f2", map: t, emissive: "#ffffff", emissiveMap: t, emissiveIntensity: 0.5, roughness: 0.45, clearcoat: 0.45, clearcoatRoughness: 0.3 });
+  const edge = new THREE.MeshPhysicalMaterial({ color: "#d9d2c9", metalness: 0.35, roughness: 0.5 });
+  const m = new THREE.Mesh(g, [face, edge]); m.castShadow = m.receiveShadow = true;
+  return m;
+}
+/** Print of the tray-with-lid layout from the Dieline screenshot (150 × 100 × 40 mm): cut lines in ink, creases dashed. */
+function printTexture(len: number, width: number) {
+  const S = 4, c = document.createElement("canvas"); c.width = Math.round(len * S); c.height = Math.round(width * S);
+  const x = c.getContext("2d")!; x.fillStyle = "#f6efe5"; x.fillRect(0, 0, c.width, c.height);
+  const k = (width * S * 0.82) / 230, ox = c.width / 2, oy = c.height / 2; // net: 308 along length (u), 230 across
+  // net coordinates in mm (u along the sheet, v across), centred
+  const P = (u: number, vv: number): [number, number] => [ox + (u - 154) * k, oy + (vv - 115) * k];
+  const line = (pts: [number, number][], dash: boolean) => {
+    x.beginPath(); pts.forEach(([u, vv], i) => { const [a, b] = P(u, vv); i ? x.lineTo(a, b) : x.moveTo(a, b); });
+    x.setLineDash(dash ? [30, 20] : []); x.strokeStyle = dash ? "#b05f43" : "#2f2924"; x.lineWidth = dash ? 7 : 8; x.stroke();
+  };
+  // u: tuck 0-28, lid 28-128, back 128-168, base 168-268, front 268-308 ; v: side 0-40, centre 40-190, side 190-230
+  line([[0, 52], [0, 178], [28, 190], [128, 190], [128, 190], [132, 222], [164, 230], [168, 230], [268, 230], [272, 230], [304, 222], [308, 190], [308, 40], [304, 8], [272, 0], [268, 0], [168, 0], [164, 0], [132, 8], [128, 40], [28, 40], [0, 52]], false);
+  line([[28, 40], [28, 190]], true); line([[128, 40], [128, 190]], true); line([[168, 40], [168, 190]], true);
+  line([[268, 40], [268, 190]], true); line([[168, 40], [268, 40]], true); line([[168, 190], [268, 190]], true);
+  line([[128, 40], [128, 0]], true); line([[268, 190], [268, 230]], true);
+  x.fillStyle = "rgba(58,51,45,.6)"; x.font = `${9 * k}px sans-serif`; x.textAlign = "center"; x.textBaseline = "middle";
+  for (const [u, vv, t] of [[78, 115, "150 × 100"], [218, 115, "150 × 100"], [148, 115, "150 × 40"], [288, 115, "150 × 40"], [218, 20, "40 × 100"], [218, 210, "40 × 100"]] as [number, number, string][]) { const [a, b] = P(u, vv); x.fillText(t, a, b); }
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 16; return tx;
+}
+
 /** Point `dist` units from `target` toward the (normalised) key direction. */
 const along = (target: [number, number, number], dir: [number, number, number], dist: number): [number, number, number] => {
   const d = v(...dir).normalize(); return [target[0] + d.x * dist, target[1] + d.y * dist, target[2] + d.z * dist];
@@ -282,33 +356,38 @@ export const ARTWORKS: ArtSpec[] = [
         { width: 520, twist: -0.25, front: P2.creamLit, back: P2.sage, across: [-0.2, 0, 1] }));
       s.add(branch(7, { at: along([-200, 400, 0], HERO_KEY, 1000), normal: HERO_KEY, size: 1300, leaves: 5, spin: 0.6 }));
     },
-    camera: { pos: [-250, 1000, 3900], target: [-500, 330, 0], fov: 30 },
+    camera: { pos: [-250, 1000, 3900], target: [-500, 330, 0], fov: 30, aperture: 26, focus: [-150, 420, 150] },
     key: { dir: HERO_KEY, intensity: 3.2, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.6 },
     fill: 1.25, env: 0.28, exposure: 1.04, samples: 128, grain: 0.012, vignette: 0.0,
   },
   {
-    name: "stage-sage", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000,
-    build: (s) => {
-      s.add(sweep(P2.sand, 4000, 1800, 1600, 360));
-      s.add(ribbon([[-1400, 1, 420], [-800, 1, 380], [-460, 20, 300], [-300, 200, 160], [-360, 460, 20], [-560, 620, -100]],
-        { width: 1100, twist: 0.12, front: P2.creamLit, back: P2.sage, across: [0.35, 0, 1] }));
-      s.add(branch(21, { at: along([200, 300, -200], STAGE_KEY, 800), normal: STAGE_KEY, size: 900, leaves: 4, spin: -0.4 }));
+    name: "project-fold", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000, textures: ["fold-shot"],
+    build: (s, tex) => {
+      s.add(sweep(P2.sand, 4000, 1800, 1600, 40));
+      const panel = screenPanel(tex["fold-shot"], 800, 500);
+      panel.position.set(-170, 250 * Math.cos(0.09) + 1, -12); panel.rotation.set(-0.09, 0, 0); s.add(panel);
+      const box = mesh(carton({ L: 92, W: 62, H: 160, t: 1.5, fold: 0.72 }), paper("#a3ae96", { side: THREE.DoubleSide }));
+      box.position.set(268, 1, 90); box.rotation.set(0, -0.45, 0); s.add(box);
+      s.add(branch(21, { at: along([0, 300, -200], STAGE_KEY, 800), normal: STAGE_KEY, size: 1000, leaves: 4, spin: -0.4 }));
     },
-    camera: { pos: [0, 520, 2100], target: [0, 330, 0], fov: 32 },
-    key: { dir: STAGE_KEY, intensity: 2.9, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.1 },
-    fill: 0.6, env: 0.16, exposure: 1.06, samples: 96, grain: 0.012, vignette: 0.04,
+    camera: { pos: [210, 370, 1480], target: [120, 235, 0], fov: 30, aperture: 3, focus: [-170, 250, -12] },
+    key: { dir: STAGE_KEY, intensity: 2.6, softness: 0.06, color: "#ffeedd" }, dome: { fraction: 0.32, intensity: 1.2 },
+    fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
   },
   {
-    name: "stage-clay", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000,
-    build: (s) => {
-      s.add(sweep(P2.cream, 4000, 1800, 1600, 360));
-      s.add(ribbon([[1400, 1, 420], [800, 1, 380], [460, 20, 300], [300, 200, 160], [360, 460, 20], [560, 620, -100]],
-        { width: 1100, twist: -0.12, front: P2.clay, back: P2.creamLit, across: [-0.35, 0, 1] }));
-      s.add(branch(33, { at: along([-200, 300, -200], [0.55, 0.6, 0.58], 800), normal: [0.55, 0.6, 0.58], size: 900, leaves: 4, spin: 0.3 }));
+    name: "project-dieline", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000, textures: ["dieline-shot"],
+    build: (s, tex) => {
+      s.add(sweep(P2.cream, 4000, 1800, 1600, 40));
+      const panel = screenPanel(tex["dieline-shot"], 800, 500);
+      panel.position.set(190, 250 * Math.cos(0.09) + 1, -12); panel.rotation.set(-0.09, 0, 0); s.add(panel);
+      const L = 510, Wd = 360;
+      s.add(ribbon([[-380, 1.4, 250], [-170, 1.4, 218], [-10, 2, 196], [70, 10, 186], [112, 30, 182]],
+        { width: Wd, across: [0.08, 0, -1], front: "#f6efe5", back: P2.creamLit, thick: 1.4, frontMap: printTexture(L, Wd), seg: 120 }));
+      s.add(branch(33, { at: along([0, 300, -200], [0.55, 0.6, 0.58], 800), normal: [0.55, 0.6, 0.58], size: 1000, leaves: 4, spin: 0.3 }));
     },
-    camera: { pos: [0, 520, 2100], target: [0, 330, 0], fov: 32 },
-    key: { dir: [0.55, 0.6, 0.58], intensity: 2.9, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.1 },
-    fill: 0.6, env: 0.16, exposure: 1.06, samples: 96, grain: 0.012, vignette: 0.04,
+    camera: { pos: [-150, 560, 1500], target: [10, 205, 60], fov: 30, aperture: 3, focus: [120, 210, 40] },
+    key: { dir: [0.55, 0.6, 0.58], intensity: 2.6, softness: 0.06, color: "#ffeedd" }, dome: { fraction: 0.32, intensity: 1.2 },
+    fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
   },
   {
     name: "closing-waves", width: 2800, height: 1000, bg: P2.cream, shadowExtent: 1300,
@@ -336,8 +415,14 @@ export async function renderArt(spec: ArtSpec, scaleDown = 1): Promise<string> {
   renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = spec.exposure; renderer.outputColorSpace = THREE.SRGBColorSpace;
   const scene = new THREE.Scene(); scene.background = new THREE.Color(spec.bg);
   const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = spec.env;
-  spec.build(scene);
-  const hemi = new THREE.HemisphereLight(0xfff7ec, 0x6d6457, spec.fill); scene.add(hemi);
+  const tex: Record<string, THREE.Texture> = {};
+  for (const k of spec.textures ?? []) {
+    const url = (window as unknown as { ART_ASSETS: Record<string, string> }).ART_ASSETS[k];
+    const t = await new THREE.TextureLoader().loadAsync(url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 16; tex[k] = t;
+  }
+  spec.build(scene, tex);
+  // warm sky above, warm paper bounce below (instead of a grey ground) for natural shadow colour
+  const hemi = new THREE.HemisphereLight(0xfff6ea, 0xd9b99c, spec.fill); scene.add(hemi);
   const key = new THREE.DirectionalLight(new THREE.Color(spec.key.color ?? "#ffffff"), spec.key.intensity);
   key.castShadow = true; key.shadow.mapSize.set(4096, 4096); key.shadow.bias = -0.0002; key.shadow.normalBias = 0.6; key.shadow.radius = 2;
   const ex = spec.shadowExtent ?? 520; const sc = key.shadow.camera; sc.left = -ex; sc.right = ex; sc.top = ex; sc.bottom = -ex; sc.near = 10; sc.far = 3000;
@@ -361,6 +446,14 @@ export async function renderArt(spec: ArtSpec, scaleDown = 1): Promise<string> {
       key.intensity = spec.key.intensity; key.color.set(spec.key.color ?? "#ffffff");
     }
     key.position.copy(target.position).add(dir.multiplyScalar(1500));
+    if (spec.camera.aperture) { // thin-lens depth of field: sample the aperture, keep the focus point fixed
+      const focus = new THREE.Vector3(...(spec.camera.focus ?? spec.camera.target));
+      const fwd = focus.clone().sub(new THREE.Vector3(...spec.camera.pos)).normalize();
+      const right = fwd.clone().cross(new THREE.Vector3(0, 1, 0)).normalize(), up = right.clone().cross(fwd);
+      const ra = Math.sqrt(hash(sIdx * 19 + 5)) * spec.camera.aperture, aa = 2 * Math.PI * hash(sIdx * 23 + 7);
+      cam.position.set(...spec.camera.pos).add(right.multiplyScalar(Math.cos(aa) * ra)).add(up.multiplyScalar(Math.sin(aa) * ra));
+      cam.lookAt(focus);
+    }
     cam.setViewOffset(W, H, hash(sIdx * 7 + 11) - 0.5, hash(sIdx * 13 + 17) - 0.5, W, H); // sub-pixel AA
     renderer.render(scene, cam);
     gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);

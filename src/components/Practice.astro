@@ -5,14 +5,17 @@ import { practice } from "../content/content";
   <div class="wrap practice__grid">
     <h2 id="practice-title" class="practice__title display" data-reveal>{practice.title}</h2>
     <div class="practice__body">
-      <p class="practice__statement" data-reveal>{practice.statement}</p>
+      <div class="practice__intro">
+        <p class="practice__statement" data-reveal>{practice.statement}</p>
+        <p class="practice__note" data-reveal style="--d:.06s">{practice.note}</p>
+      </div>
       <div class="practice__lists">
         <div data-reveal style="--d:.08s">
-          <h3 class="eyebrow">Disciplines</h3>
-          <ul>{practice.disciplines.map((d) => <li>{d}</li>)}</ul>
+          <h3 class="eyebrow">{practice.interestsLabel}</h3>
+          <ul>{practice.interests.map((d) => <li>{d}</li>)}</ul>
         </div>
         <div data-reveal style="--d:.16s">
-          <h3 class="eyebrow">Tools</h3>
+          <h3 class="eyebrow">{practice.toolsLabel}</h3>
           <ul>{practice.tools.map((t) => <li>{t}</li>)}</ul>
         </div>
       </div>
@@ -21,11 +24,13 @@ import { practice } from "../content/content";
 </section>
 
 <style>
-  .practice { padding-block: clamp(5rem, 10vw, 9rem); background: var(--paper-light); border-block: 1px solid var(--rule); }
+  .practice { padding-block: clamp(4.5rem, 8vw, 7rem); background: var(--paper-light); border-block: 1px solid var(--rule); }
   .practice__grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: clamp(2rem, 6vw, 6.5rem); }
-  .practice__title { font-size: var(--display-md); line-height: 1; }
+  .practice__title { font-size: var(--display-md); line-height: 1; margin-top: -0.3rem; }
   .practice__body { display: grid; gap: clamp(2.5rem, 5vw, 4rem); }
-  .practice__statement { font-family: var(--serif); font-weight: 320; font-size: var(--display-sm); line-height: 1.28; letter-spacing: -0.015em; max-width: 40rem; }
+  .practice__intro { display: grid; gap: 1.2rem; }
+  .practice__statement { font-family: var(--serif); font-weight: 330; font-size: clamp(1.6rem, 1.3rem + 1.2vw, 2.25rem); line-height: 1.32; letter-spacing: -0.012em; max-width: 34rem; }
+  .practice__note { color: var(--ink-soft); max-width: 30rem; }
   .practice__lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem clamp(2rem, 5vw, 4rem); max-width: 40rem; }
   .practice__lists h3 { margin-bottom: 1rem; }
   .practice__lists ul { border-top: 1px solid var(--rule); }

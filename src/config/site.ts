@@ -17,9 +17,9 @@ export const site = {
   url: "https://www.elhamkouhbor.com",
   locale: "en",
   role: "Digital Designer",
-  title: "Elham Kouhbor — Digital Designer",
+  title: "Elham Kouhbor, Digital Designer",
   description:
-    "Elham Kouhbor is a digital designer working across visual communication, layout, interaction and structure — from screen to structure.",
+    "Elham Kouhbor is a digital designer interested in visual communication, typography, layout and interactive experiences.",
   ogImage: "/og.jpg",
   themeColor: "#F1E2D2",
 } as const;

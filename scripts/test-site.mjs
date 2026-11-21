@@ -32,12 +32,18 @@ check(!/\bstudent\b/i.test(text), "copy never describes her as a student");
 check(!/cacao/i.test(html), "no classroom exercise (CACAO NOIR) featured");
 check(!/mailto:|tel:|instagram\.com|behance\.net|linkedin\.com/i.test(html), "no unverified contact details");
 const external = [...html.matchAll(/href="(https?:[^"]+)"/g)].map((m) => m[1]).filter((u) => !u.startsWith(SITE) && !u.startsWith("https://schema.org"));
-check(external.every((u) => u === "https://github.com/elhamkouhbor"), "only verified external link (GitHub)", external.join(", "));
+const allowed = ["https://github.com/elhamkouhbor", "https://github.com/elhamkouhbor/fold", "https://github.com/elhamkouhbor/Dieline"];
+check(external.every((u) => allowed.includes(u)), "only verified external links (GitHub profile and project repos)", external.join(", "));
+// Copy rules: no em/en dashes or semicolons in anything a visitor can read or hear.
+const readable = [text, ...[...html.matchAll(/(?:alt|aria-label|content|title)="([^"]*)"/g)].map((m) => m[1]), (html.match(/<title>([^<]*)/) ?? [])[1] ?? ""]
+  .join(" \n ").replace(/&#39;|&amp;|&quot;/g, " ");
+const badPunct = readable.match(/.{0,30}[—–;].{0,30}/g)?.filter((m) => !/https?:|width=device|initial-scale/.test(m)) ?? [];
+check(badPunct.length === 0, "visible copy uses no em dashes, en dashes or semicolons", badPunct.slice(0, 3).join(" | "));
 check(html.includes('href="/fold/"') && html.includes('href="/Dieline/"'), "project links point at the live Fold and Dieline tools");
 check(/Digital Designer/.test(text), "introduces her as a Digital Designer");
 check(!/<img[^>]*(portrait|profile)/i.test(html), "no portrait imagery");
 check(!/https?:\/\/(?!www\.elhamkouhbor\.com|schema\.org|github\.com\/elhamkouhbor|www\.w3\.org)[^"' )]+\.(jpe?g|png|webp|avif|gif)/i.test(html), "no hotlinked images");
-for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Practice", "Photoshop", "Illustrator", "InDesign", "CAD", "Let’s create something meaningful."]) check(text.includes(h), `copy present: ${h}`);
+for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Practice", "Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "CAD", "Thanks for visiting."]) check(text.includes(h), `copy present: ${h}`);
 check(!/skill|expert|master|%<\//i.test(text), "no skill bars, percentages or expert labels");
 
 // ---------- Browser checks ----------
@@ -114,7 +120,7 @@ for (const vp of viewports) for (const reduced of [false, true]) {
 const ctx = await browser.newContext();
 const p404 = await ctx.newPage();
 const res = await p404.goto(base + "/does-not-exist");
-check(res.status() === 404 && ((await p404.textContent("h1")) ?? "").includes("folded away"), "404 page served");
+check(res.status() === 404 && ((await p404.textContent("h1")) ?? "").includes("could not be found"), "404 page served");
 await browser.close();
 server.close();
 
