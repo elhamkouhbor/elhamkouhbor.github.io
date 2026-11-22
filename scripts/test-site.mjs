@@ -27,8 +27,9 @@ check(html.includes(`<link rel="canonical" href="${SITE}/">`), "canonical URL");
 check(html.includes(`property="og:image" content="${SITE}/og.jpg"`), "og:image absolute URL");
 check(existsSync(join(dist, "og.jpg")) && statSync(join(dist, "og.jpg")).size < 300_000, "og.jpg present and < 300 kB");
 for (const f of ["favicon.svg", "favicon-32.png", "apple-touch-icon.png", "robots.txt", "sitemap.xml", "404.html"]) check(existsSync(join(dist, f)), `${f} present`);
-check(readFileSync(join(dist, "sitemap.xml"), "utf8").includes(`<loc>${SITE}/</loc>`), "sitemap lists the canonical URL");
-check(/<html lang="en"/.test(html), "document language set");
+const sitemap = readFileSync(join(dist, "sitemap.xml"), "utf8");
+check(["/", "/sv/", "/fa/"].every((p) => sitemap.includes(`<loc>${SITE}${p}</loc>`)) && (sitemap.match(/hreflang=/g) ?? []).length === 12, "sitemap lists all three languages with alternates");
+check(/<html lang="en" dir="ltr"/.test(html), "document language set");
 check((html.match(/<h1[\s>]/g) ?? []).length === 1, "exactly one h1");
 check(!/\bstudent\b/i.test(text), "copy never describes her as a student");
 check(!/cacao/i.test(html), "no classroom exercise (CACAO NOIR) featured");
@@ -49,6 +50,32 @@ for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Color 
 check(!/skill|expert|master|%<\//i.test(text), "no skill bars, percentages or expert labels");
 
 check(!/rel="modulepreload"[^>]*live\./.test(html), "3D hero renderer is not preloaded (loaded lazily)");
+
+// ---------- Language versions ----------
+console.log("\nLanguages");
+const LANGS = [
+  { lang: "en", path: "/", dir: "ltr", copy: ["Selected work", "Practice", "Thanks for visiting."] },
+  { lang: "sv", path: "/sv/", dir: "ltr", copy: ["Utvalda arbeten", "Inriktning", "Tack för besöket.", "Digital designer", "Öppna Color Lab"] },
+  { lang: "fa", path: "/fa/", dir: "rtl", copy: ["نمونه‌کارهای منتخب", "رویکرد", "از بازدید شما سپاسگزارم.", "طراح دیجیتال", "باز کردن Color Lab", "۰۳"] },
+];
+for (const L of LANGS) {
+  const h = readFileSync(join(dist, L.path, "index.html"), "utf8");
+  const t = h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, " ").replace(/<[^>]+>/g, " ");
+  check(new RegExp(`<html lang="${L.lang}" dir="${L.dir}"`).test(h), `${L.lang}: lang and direction (${L.dir})`);
+  check(h.includes(`<link rel="canonical" href="${SITE}${L.path}">`), `${L.lang}: canonical URL`);
+  check(LANGS.every((o) => h.includes(`<link rel="alternate" hreflang="${o.lang}" href="${SITE}${o.path}">`)) && h.includes('hreflang="x-default"'), `${L.lang}: hreflang alternates for every language`);
+  check(LANGS.every((o) => new RegExp(`<a href="${o.path}" hreflang="${o.lang}" lang="${o.lang}"[^>]*${o.lang === L.lang ? 'aria-current="page"' : ""}`).test(h)), `${L.lang}: language switcher links to every version, current one marked`);
+  check(L.copy.every((c) => t.includes(c)), `${L.lang}: translated copy present`, L.copy.filter((c) => !t.includes(c)).join(", "));
+  check(h.includes('href="/fold/"') && h.includes('href="/Dieline/"') && h.includes('href="/color-lab/"'), `${L.lang}: project links point at the live tools`);
+  const ext = [...h.matchAll(/href="(https?:[^"]+)"/g)].map((m) => m[1]).filter((u) => !u.startsWith(SITE));
+  check(ext.every((u) => allowed.includes(u)), `${L.lang}: only verified external links`, ext.join(", "));
+  const read = [t, ...[...h.matchAll(/(?:alt|aria-label|content|title)="([^"]*)"/g)].map((m) => m[1])].join(" \n ").replace(/&#39;|&amp;|&quot;/g, " ");
+  const bad = read.match(/.{0,30}[—–;؛].{0,30}/g)?.filter((m) => !/https?:|width=device|initial-scale/.test(m)) ?? [];
+  check(bad.length === 0, `${L.lang}: copy uses no em dashes, en dashes or semicolons`, bad.slice(0, 3).join(" | "));
+  check(!/\bstudent\b|\bstudent(en)?\b|دانشجو/i.test(t), `${L.lang}: never describes her as a student`);
+  check((h.match(/<h1[\s>]/g) ?? []).length === 1, `${L.lang}: exactly one h1`);
+  if (L.lang !== "en") check(!/Selected work|Thanks for visiting|Back to top|Skip to content/.test(t), `${L.lang}: no English interface text left`);
+}
 
 // ---------- Hero sculpture geometry over its loop ----------
 console.log("\nHero sculpture (geometry over one full loop)");
@@ -91,15 +118,18 @@ const viewports = [
   { name: "mobile", width: 390, height: 844, isMobile: true, hasTouch: true },
 ];
 
-for (const vp of viewports) for (const reduced of [false, true]) {
-  console.log(`\n${vp.name}${reduced ? " · reduced motion" : ""}`);
+const runs = [];
+for (const vp of viewports) for (const reduced of [false, true]) runs.push({ vp, reduced, L: LANGS[0] });
+for (const L of LANGS.slice(1)) for (const vp of [viewports[0], viewports[2]]) runs.push({ vp, reduced: L.lang === "sv", L });
+for (const { vp, reduced, L } of runs) {
+  console.log(`\n${L.lang} · ${vp.name}${reduced ? " · reduced motion" : ""}`);
   const ctx = await browser.newContext({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch, reducedMotion: reduced ? "reduce" : "no-preference" });
   const page = await ctx.newPage();
   const errors = [], badResponses = [];
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("response", (r) => r.status() >= 400 && badResponses.push(`${r.status()} ${r.url()}`));
-  await page.goto(base + "/", { waitUntil: "networkidle" });
+  await page.goto(base + L.path, { waitUntil: "networkidle" });
   await page.waitForTimeout(reduced ? 300 : 3200);
 
   // Scroll through to trigger lazy images and reveals.
@@ -127,6 +157,16 @@ for (const vp of viewports) for (const reduced of [false, true]) {
   check(r.formats.includes("avif") || r.formats.includes("webp"), `modern image formats served (${r.formats.join(", ")})`);
   check(r.hidden === 0, "all revealed content visible after scrolling", `${r.hidden} still hidden`);
   check(r.fonts.some((f) => /Fraunces/.test(f)) && r.fonts.some((f) => /Manrope/.test(f)), "Fraunces + Manrope loaded");
+  if (L.lang === "fa") {
+    check(r.fonts.some((f) => /Vazirmatn/.test(f)), "Vazirmatn loaded for Persian text");
+    const rtl = await page.evaluate(() => {
+      const t = document.querySelector(".hero__text").getBoundingClientRect(), a = document.querySelector(".hero__art").getBoundingClientRect();
+      return { dir: getComputedStyle(document.body).direction, textRight: Math.round(innerWidth - t.right), heroArtLeft: Math.round(a.left), family: getComputedStyle(document.querySelector(".lead")).fontFamily };
+    });
+    check(rtl.dir === "rtl", "page flows right to left");
+    check(/Vazirmatn/.test(rtl.family), "Persian text set in Vazirmatn");
+    if (vp.name === "desktop") check(rtl.heroArtLeft <= 1, "hero sculpture sits on the left, away from the right-aligned text", `art left ${rtl.heroArtLeft}`);
+  } else check(!r.fonts.some((f) => /Vazirmatn/.test(f)), "Persian font not downloaded on this page");
   check(r.anchors.length === 0, "all in-page anchors resolve", r.anchors.join(", "));
   if (reduced) check(!r.animClass, "reduced motion: animation gate off");
   await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
@@ -210,6 +250,14 @@ const ctx = await browser.newContext();
 const p404 = await ctx.newPage();
 const res = await p404.goto(base + "/does-not-exist");
 check(res.status() === 404 && ((await p404.textContent("h1")) ?? "").includes("could not be found"), "404 page served");
+check((await p404.$$eval('.nf__other a', (a) => a.map((x) => x.getAttribute("href")))).join() === "/sv/,/fa/", "404 page links to the Swedish and Farsi home pages");
+// switching language from the header keeps working
+const pl = await ctx.newPage();
+await pl.goto(base + "/");
+await Promise.all([pl.waitForURL(base + "/fa/"), pl.click('.top__lang a[lang="fa"]')]);
+check(await pl.evaluate(() => document.documentElement.dir === "rtl" && document.documentElement.lang === "fa"), "language switcher opens the Farsi page");
+await Promise.all([pl.waitForURL(base + "/sv/"), pl.click('.top__lang a[lang="sv"]')]);
+check(await pl.evaluate(() => document.documentElement.lang === "sv"), "language switcher opens the Swedish page");
 await browser.close();
 server.close();
 

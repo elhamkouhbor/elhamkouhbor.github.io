@@ -1,13 +1,17 @@
 ---
 import { Picture } from "astro:assets";
-import { hero } from "../content/content";
+import { copy, images } from "../content/content";
+import type { Lang } from "../i18n/locales";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const hero = copy[lang].hero;
 ---
 
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero__art" aria-hidden="true">
     <div class="hero__stage" data-sculpture="hero">
     <Picture
-      src={hero.image}
+      src={images.hero}
       alt=""
       formats={["avif", "webp"]}
       widths={[700, 1000, 1400, 1900, 2800]}
@@ -25,7 +29,7 @@ import { hero } from "../content/content";
       <span class="hero__in" style="--i:2">Kouhbor</span>
     </h1>
     <p class="lead hero__in" style="--i:3">{hero.intro}</p>
-    <a class="text-link hero__in" style="--i:4" href={hero.cta.href}>{hero.cta.label} <span class="arrow arrow--down" aria-hidden="true">↓</span></a>
+    <a class="text-link hero__in" style="--i:4" href="#work">{hero.cta} <span class="arrow arrow--down" aria-hidden="true">↓</span></a>
   </div>
 </section>
 
@@ -43,6 +47,9 @@ import { hero } from "../content/content";
     mask-composite: intersect;
   }
   .hero__stage { position: absolute; inset: 0; }
+  /* Right to left: the sculpture moves to the other side and is mirrored, so the paper still leans away
+     from the text and the masks fade towards it. */
+  :global([dir="rtl"]) .hero__art { inset: 0 auto 0 0; transform: scaleX(-1); }
   .hero__art :global(picture) { display: block; height: 100%; }
   .hero__art :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: 72% 50%; }
   .hero__text { position: relative; display: grid; justify-items: start; gap: clamp(1.4rem, 2.6vw, 2rem); padding-block: 8rem 6rem; }
@@ -65,6 +72,7 @@ import { hero } from "../content/content";
       -webkit-mask-image: linear-gradient(to top, transparent 0%, #000 30%); mask-image: linear-gradient(to top, transparent 0%, #000 30%);
     }
     .hero__art :global(img) { object-position: 62% 42%; }
+    :global([dir="rtl"]) .hero__art { inset: auto; }
     .hero__text { grid-row: 2; margin-top: -5rem; padding-block: 0 4.5rem; }
     .hero__title { font-size: clamp(3.2rem, 15vw, 5rem); }
   }

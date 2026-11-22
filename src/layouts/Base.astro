@@ -1,10 +1,18 @@
 ---
 import "../styles/global.css";
 import { site, contact } from "../config/site";
+import { copy } from "../content/content";
+import { langs, locales, type Lang } from "../i18n/locales";
 
-interface Props { title?: string; description?: string; noindex?: boolean }
-const { title = site.title, description = site.description, noindex = false } = Astro.props;
+interface Props { lang?: Lang; title?: string; description?: string; noindex?: boolean }
+const { lang = "en", noindex = false } = Astro.props;
+const c = copy[lang];
+const loc = locales[lang];
+const { title = c.site.title, description = c.site.description } = Astro.props;
 const canonical = new URL(Astro.url.pathname, site.url).href;
+// Every language version names the others (and English as the default for everyone else).
+const alternates = noindex ? [] : [...langs.map((l) => ({ hreflang: locales[l].tag, href: new URL(locales[l].path, site.url).href })),
+  { hreflang: "x-default", href: new URL(locales.en.path, site.url).href }];
 const ogImage = new URL(site.ogImage, site.url).href;
 const jsonLd = {
   "@context": "https://schema.org",
@@ -16,13 +24,14 @@ const jsonLd = {
 };
 ---
 <!doctype html>
-<html lang={site.locale}>
+<html lang={loc.tag} dir={loc.dir}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {alternates.map((a) => <link rel="alternate" hreflang={a.hreflang} href={a.href} />)}
     {noindex && <meta name="robots" content="noindex" />}
     <meta name="theme-color" content={site.themeColor} />
     <meta name="color-scheme" content="light" />
@@ -38,8 +47,9 @@ const jsonLd = {
     <meta property="og:image" content={ogImage} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="Elham Kouhbor, Digital Designer. A sheet of clay coloured paper curling in soft light." />
-    <meta property="og:locale" content="en_GB" />
+    <meta property="og:image:alt" content={c.site.ogImageAlt} />
+    <meta property="og:locale" content={loc.ogLocale} />
+    {!noindex && langs.filter((l) => l !== lang).map((l) => <meta property="og:locale:alternate" content={locales[l].ogLocale} />)}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
@@ -58,7 +68,7 @@ const jsonLd = {
     </script>
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="skip-link" href="#main">{c.ui.skip}</a>
     <slot />
   </body>
 </html>

@@ -15,11 +15,8 @@ export const site = {
   name: "Elham Kouhbor",
   /** Production URL (canonical, sitemap, social cards). */
   url: "https://www.elhamkouhbor.com",
-  locale: "en",
   role: "Digital Designer",
-  title: "Elham Kouhbor, Digital Designer",
-  description:
-    "Elham Kouhbor is a digital designer interested in visual communication, typography, layout and interactive experiences.",
+  // Page titles and descriptions are per language: src/content/content.ts (copy[lang].site).
   ogImage: "/og.jpg",
   themeColor: "#F1E2D2",
 } as const;
@@ -44,7 +41,5 @@ export function contactLinks(): { label: string; href: string; handle: string }[
   return out;
 }
 
-export const nav = [
-  { href: "#work", label: "Work" },
-  { href: "#practice", label: "Practice" },
-] as const;
+/** In-page navigation. Labels are per language (copy[lang].ui.nav). */
+export const nav = ["work", "practice"] as const;

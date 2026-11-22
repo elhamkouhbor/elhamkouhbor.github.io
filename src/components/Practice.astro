@@ -1,5 +1,9 @@
 ---
-import { practice } from "../content/content";
+import { copy, tools } from "../content/content";
+import type { Lang } from "../i18n/locales";
+interface Props { lang: Lang }
+const { lang } = Astro.props;
+const practice = copy[lang].practice;
 import ToolIcon from "./ToolIcon.astro";
 ---
 <section id="practice" class="practice" aria-labelledby="practice-title">
@@ -18,10 +22,10 @@ import ToolIcon from "./ToolIcon.astro";
         <div data-reveal style="--d:.16s">
           <h3 class="eyebrow">{practice.toolsLabel}</h3>
           <ul class="tools">
-            {practice.tools.map((t, i) => (
+            {tools.map((t, i) => (
               <li class="tool" style={`--tool-accent: var(${i % 2 ? "--sage-deep" : "--clay"})`}>
                 <span class="tool__tile"><ToolIcon icon={t.icon} /></span>
-                <span class="tool__name">{t.name}</span>
+                <span class="tool__name" lang="en">{t.name}</span>
               </li>
             ))}
           </ul>

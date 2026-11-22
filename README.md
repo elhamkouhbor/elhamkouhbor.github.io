@@ -2,6 +2,7 @@
 
 The personal site of **Elham Kouhbor**, Digital Designer. A single calm, editorial page: introduction,
 three selected projects (Fold, Dieline and Color Lab), practice and tools, and a short closing with contact links.
+The page is published in three languages: English at `/`, Swedish at `/sv/` and Farsi (right to left) at `/fa/`.
 
 Static site built with [Astro](https://astro.build), deployed to GitHub Pages by GitHub Actions on every
 push to `main`. Custom domain: **https://www.elhamkouhbor.com** (`public/CNAME`).
@@ -26,13 +27,18 @@ upgraded with `npm i astro@7`.
 
 | What | Where |
 | --- | --- |
-| Name, role, page title/description, navigation | `src/config/site.ts` |
+| Name, role, contact links | `src/config/site.ts` |
+| Languages (paths, direction, switcher labels) | `src/i18n/locales.ts` |
 | Contact links (GitHub, email, LinkedIn, Instagram, Behance) | `contact` in `src/config/site.ts` — `null` fields are not rendered |
-| Hero text, project copy/links/alt text, disciplines, tools, closing line | `src/content/content.ts` |
+| All page text in English, Swedish and Farsi (titles, descriptions, hero, projects, alt text, practice, closing, 404) | `src/content/content.ts` (`copy.en`, `copy.sv`, `copy.fa`) |
 | Colours, type scale, spacing | `src/styles/global.css` (`:root` tokens) |
 | Motion | `src/scripts/reveal.ts` (IntersectionObserver fade-ins) and the CSS intro in `src/components/Hero.astro` |
 | Hero sculpture (shapes, loop length) | `src/scripts/sculpture/shape.ts` (keyframes) and `live.ts` (renderer, lighting) |
 | Tool pictograms | `src/components/ToolIcon.astro` |
+
+Every text change must be made in all three languages. The Farsi page flows right to left, uses
+Vazirmatn (OFL, Arabic script subset only) for Persian text and keeps names and product names in Latin
+script. The hero and closing artworks are mirrored there so the paper leans away from the text.
 
 Only add contact details once they are confirmed — nothing is shown for empty fields.
 
