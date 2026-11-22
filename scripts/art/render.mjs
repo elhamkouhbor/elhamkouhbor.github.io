@@ -22,6 +22,7 @@ const crop = async (file, [x, y, w, h]) => `data:image/jpeg;base64,${(await shar
 const assets = {
   "fold-shot": await crop("src/assets/projects/fold-studio.jpg", [504, 0, 1872, 1170]),
   "dieline-shot": await crop("src/assets/projects/dieline-creator.jpg", [504, 72, 1872, 1170]),
+  "colorlab-shot": await crop("src/assets/projects/color-lab.jpg", [0, 0, 1720, 1075]),
 };
 await page.evaluate((a) => { window.ART_ASSETS = a; }, assets);
 const names = await page.evaluate(() => ART.ARTWORKS.map((a) => a.name));

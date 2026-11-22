@@ -34,18 +34,18 @@ check(!/\bstudent\b/i.test(text), "copy never describes her as a student");
 check(!/cacao/i.test(html), "no classroom exercise (CACAO NOIR) featured");
 check(!/mailto:|tel:|instagram\.com|behance\.net|linkedin\.com/i.test(html), "no unverified contact details");
 const external = [...html.matchAll(/href="(https?:[^"]+)"/g)].map((m) => m[1]).filter((u) => !u.startsWith(SITE) && !u.startsWith("https://schema.org"));
-const allowed = ["https://github.com/elhamkouhbor", "https://github.com/elhamkouhbor/fold", "https://github.com/elhamkouhbor/Dieline"];
+const allowed = ["https://github.com/elhamkouhbor", "https://github.com/elhamkouhbor/fold", "https://github.com/elhamkouhbor/Dieline", "https://github.com/elhamkouhbor/color-lab"];
 check(external.every((u) => allowed.includes(u)), "only verified external links (GitHub profile and project repos)", external.join(", "));
 // Copy rules: no em/en dashes or semicolons in anything a visitor can read or hear.
 const readable = [text, ...[...html.matchAll(/(?:alt|aria-label|content|title)="([^"]*)"/g)].map((m) => m[1]), (html.match(/<title>([^<]*)/) ?? [])[1] ?? ""]
   .join(" \n ").replace(/&#39;|&amp;|&quot;/g, " ");
 const badPunct = readable.match(/.{0,30}[—–;].{0,30}/g)?.filter((m) => !/https?:|width=device|initial-scale/.test(m)) ?? [];
 check(badPunct.length === 0, "visible copy uses no em dashes, en dashes or semicolons", badPunct.slice(0, 3).join(" | "));
-check(html.includes('href="/fold/"') && html.includes('href="/Dieline/"'), "project links point at the live Fold and Dieline tools");
+check(html.includes('href="/fold/"') && html.includes('href="/Dieline/"') && html.includes('href="/color-lab/"'), "project links point at the live Fold, Dieline and Color Lab tools");
 check(/Digital Designer/.test(text), "introduces her as a Digital Designer");
 check(!/<img[^>]*(portrait|profile)/i.test(html), "no portrait imagery");
 check(!/https?:\/\/(?!www\.elhamkouhbor\.com|schema\.org|github\.com\/elhamkouhbor|www\.w3\.org)[^"' )]+\.(jpe?g|png|webp|avif|gif)/i.test(html), "no hotlinked images");
-for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Practice", "Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "CAD", "Thanks for visiting."]) check(text.includes(h), `copy present: ${h}`);
+for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Color Lab", "Practice", "Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "CAD", "Thanks for visiting."]) check(text.includes(h), `copy present: ${h}`);
 check(!/skill|expert|master|%<\//i.test(text), "no skill bars, percentages or expert labels");
 
 check(!/rel="modulepreload"[^>]*live\./.test(html), "3D hero renderer is not preloaded (loaded lazily)");

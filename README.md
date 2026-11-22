@@ -1,7 +1,7 @@
 # elhamkouhbor.com
 
 The personal site of **Elham Kouhbor**, Digital Designer. A single calm, editorial page: introduction,
-two selected projects (Fold and Dieline), practice and tools, and a short closing with contact links.
+three selected projects (Fold, Dieline and Color Lab), practice and tools, and a short closing with contact links.
 
 Static site built with [Astro](https://astro.build), deployed to GitHub Pages by GitHub Actions on every
 push to `main`. Custom domain: **https://www.elhamkouhbor.com** (`public/CNAME`).
@@ -45,9 +45,9 @@ shadows cast by an invisible branch).
 - `hero-ribbon`: the first frame of the live hero sculpture (see below), rendered offline at full quality.
 - `hero-leaves.png`: the blurred leaf silhouette seen from the key light, used for the live leaf shadows.
 - `closing-waves`: the far ends of the same sheets, as the closing section shows them at the start of the loop.
-- `project-fold`, `project-dieline`: the **real application screenshots** in
+- `project-fold`, `project-dieline`, `project-colorlab`: the **real application screenshots** in
   `src/assets/projects/` shown on a slim panel, each with one physical object (a sage paper carton for
-  Fold, a print of the same tray layout for Dieline). `render.mjs` crops the screenshots
+  Fold, a print of the same tray layout for Dieline, an open paper colour fan for Color Lab). `render.mjs` crops the screenshots
   (see `assets` there). Retake the screenshots when the tools change, then re-render.
 
 ```bash

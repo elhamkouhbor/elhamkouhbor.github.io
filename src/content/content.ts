@@ -10,6 +10,7 @@ import type { ImageMetadata } from "astro";
 import heroRibbon from "../assets/art/hero-ribbon.jpg";
 import projectFold from "../assets/art/project-fold.jpg";
 import projectDieline from "../assets/art/project-dieline.jpg";
+import projectColorLab from "../assets/art/project-colorlab.jpg";
 import closingWaves from "../assets/art/closing-waves.jpg";
 
 export const hero = {
@@ -65,6 +66,22 @@ export const projects: Project[] = [
     image: projectDieline,
     alt: "The Dieline tool on a screen showing a measured tray layout and its folded preview. A printed sheet of the same layout lies on the floor in front of it.",
     caption: "A tray layout in Dieline, next to a print of the same drawing.",
+  },
+  {
+    id: "color-lab",
+    n: "03",
+    title: "Color Lab",
+    summary: "A colour tool for choosing palettes, checking that text stays readable and seeing how colours may look to people with colour vision deficiencies.",
+    body: "Browse about 500 open palettes and try them on a website, a poster and an app screen. Contrast is checked as you edit, and a side by side view shows the same design with protanopia, deuteranopia or tritanopia.",
+    meta: [
+      { label: "Type", value: "Web application" },
+      { label: "Focus", value: "Colour, accessibility, visual design" },
+    ],
+    link: { href: "/color-lab/", label: "Open Color Lab" },
+    source: "https://github.com/elhamkouhbor/color-lab",
+    image: projectColorLab,
+    alt: "The Color Lab workspace on a screen leaning against a warm paper wall, showing a website in its original colours next to a deuteranopia simulation. An open paper colour fan leans against the screen.",
+    caption: "Color Lab comparing a palette with a deuteranopia simulation, beside a paper colour fan.",
   },
 ];
 

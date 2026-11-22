@@ -330,6 +330,27 @@ export function renderLeaves(size = 512): string {
 }
 
 /** Slim frameless panel showing a real application screenshot (front face = image, lit like a matte screen). */
+/** An open paper colour fan deck standing on its rivet end and leaning back (against the screen). */
+function swatchFan(colors: string[], o: { at: [number, number, number]; spread: number; spin: number; lean: number }) {
+  const g = new THREE.Group(), L = 225, W = 54, T = 1.4;
+  colors.forEach((c, i) => {
+    const card = new THREE.Mesh(new THREE.BoxGeometry(W, L, T), paper(c));
+    card.castShadow = card.receiveShadow = true;
+    card.position.set(0, L / 2 - W / 2, i * T * 1.08); // pivot near the bottom end
+    const arm = new THREE.Group();
+    arm.add(card);
+    arm.rotation.z = o.spin - (i / Math.max(1, colors.length - 1)) * o.spread;
+    g.add(arm);
+  });
+  const rivet = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, colors.length * T * 1.08 + 3, 24), new THREE.MeshPhysicalMaterial({ color: "#b9ab92", metalness: 0.7, roughness: 0.35 }));
+  rivet.rotation.x = Math.PI / 2; rivet.position.z = (colors.length * T * 1.08) / 2; rivet.castShadow = true;
+  g.add(rivet);
+  const holder = new THREE.Group();
+  holder.add(g);
+  holder.rotation.x = -o.lean;
+  holder.position.set(...o.at);
+  return holder;
+}
 function screenPanel(shot: THREE.Texture, W: number, H: number, depth = 12, r = 9) {
   const sh = new THREE.Shape(), x0 = -W / 2, y0 = -H / 2;
   sh.moveTo(x0 + r, y0); sh.lineTo(x0 + W - r, y0); sh.quadraticCurveTo(x0 + W, y0, x0 + W, y0 + r); sh.lineTo(x0 + W, y0 + H - r);
@@ -410,6 +431,19 @@ export const ARTWORKS: ArtSpec[] = [
     },
     camera: { pos: [-150, 560, 1500], target: [10, 205, 60], fov: 30, aperture: 3, focus: [120, 210, 40] },
     key: { dir: [0.55, 0.6, 0.58], intensity: 2.6, softness: 0.06, color: "#ffeedd" }, dome: { fraction: 0.32, intensity: 1.2 },
+    fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
+  },
+  {
+    name: "project-colorlab", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000, textures: ["colorlab-shot"],
+    build: (s, tex) => {
+      s.add(sweep(P2.sand, 4000, 1800, 1600, 40));
+      const panel = screenPanel(tex["colorlab-shot"], 800, 500);
+      panel.position.set(-170, 250 * Math.cos(0.09) + 1, -12); panel.rotation.set(-0.09, 0, 0); s.add(panel);
+      s.add(swatchFan(["#2b2b2b", "#6b9bb0", "#d8453a", "#b8674a", "#8f9b82", "#e3c9a0", "#f4eee0"], { at: [262, 36, 62], spread: -0.95, spin: -0.12, lean: 0.22 }));
+      s.add(branch(45, { at: along([0, 300, -200], STAGE_KEY, 800), normal: STAGE_KEY, size: 1000, leaves: 4, spin: -0.2 }));
+    },
+    camera: { pos: [210, 370, 1480], target: [120, 235, 0], fov: 30, aperture: 3, focus: [-170, 250, -12] },
+    key: { dir: STAGE_KEY, intensity: 2.6, softness: 0.06, color: "#ffeedd" }, dome: { fraction: 0.32, intensity: 1.2 },
     fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
   },
   {
