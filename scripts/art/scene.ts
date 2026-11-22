@@ -351,6 +351,18 @@ function swatchFan(colors: string[], o: { at: [number, number, number]; spread: 
   holder.position.set(...o.at);
   return holder;
 }
+/** A glazed ceramic tile: buff body with rounded edges, the Kashi design under a glossy glaze on the face. */
+function glazedTile(face: THREE.Texture, size: number, thick: number) {
+  const r = 3, h = size / 2, sh = new THREE.Shape();
+  sh.moveTo(-h + r, -h); sh.lineTo(h - r, -h); sh.quadraticCurveTo(h, -h, h, -h + r); sh.lineTo(h, h - r); sh.quadraticCurveTo(h, h, h - r, h);
+  sh.lineTo(-h + r, h); sh.quadraticCurveTo(-h, h, -h, h - r); sh.lineTo(-h, -h + r); sh.quadraticCurveTo(-h, -h, -h + r, -h);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: thick, bevelEnabled: true, bevelThickness: 1.4, bevelSize: 1.4, bevelSegments: 4, curveSegments: 8 });
+  const t = face.clone(); t.repeat.set(1 / size, 1 / size); t.offset.set(0.5, 0.5); t.needsUpdate = true;
+  const glaze = new THREE.MeshPhysicalMaterial({ map: t, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.12, sheen: 0 });
+  const body = new THREE.MeshPhysicalMaterial({ color: "#e4d3bb", roughness: 0.85 });
+  const m = new THREE.Mesh(g, [glaze, body]); m.castShadow = m.receiveShadow = true;
+  return m;
+}
 function screenPanel(shot: THREE.Texture, W: number, H: number, depth = 12, r = 9) {
   const sh = new THREE.Shape(), x0 = -W / 2, y0 = -H / 2;
   sh.moveTo(x0 + r, y0); sh.lineTo(x0 + W - r, y0); sh.quadraticCurveTo(x0 + W, y0, x0 + W, y0 + r); sh.lineTo(x0 + W, y0 + H - r);
@@ -444,6 +456,23 @@ export const ARTWORKS: ArtSpec[] = [
     },
     camera: { pos: [210, 370, 1480], target: [120, 235, 0], fov: 30, aperture: 3, focus: [-170, 250, -12] },
     key: { dir: STAGE_KEY, intensity: 2.6, softness: 0.06, color: "#ffeedd" }, dome: { fraction: 0.32, intensity: 1.2 },
+    fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
+  },
+  {
+    name: "project-kashi", width: 2000, height: 1300, bg: P2.cream, shadowExtent: 1000, textures: ["kashi-shot", "kashi-tile-eslimi", "kashi-tile-girih"],
+    build: (s, tex) => {
+      s.add(sweep(P2.cream, 4000, 1800, 1600, 40));
+      const panel = screenPanel(tex["kashi-shot"], 800, 500);
+      panel.position.set(190, 250 * Math.cos(0.09) + 1, -12); panel.rotation.set(-0.09, 0, 0); s.add(panel);
+      // one tile standing, leaning back against the screen edge, one lying on the floor in front
+      const stand = glazedTile(tex["kashi-tile-eslimi"], 150, 9);
+      stand.position.set(-318, 78, 60); stand.rotation.set(-0.2, 0.5, 0); s.add(stand);
+      const flat = glazedTile(tex["kashi-tile-girih"], 150, 9);
+      flat.position.set(-185, 1.5, 200); flat.rotation.set(-Math.PI / 2, 0, 0.32); s.add(flat);
+      s.add(branch(57, { at: along([0, 300, -200], [0.55, 0.6, 0.58], 800), normal: [0.55, 0.6, 0.58], size: 1000, leaves: 4, spin: 0.1 }));
+    },
+    camera: { pos: [-150, 560, 1500], target: [10, 205, 60], fov: 30, aperture: 3, focus: [120, 210, 40] },
+    key: { dir: [0.55, 0.6, 0.58], intensity: 2.6, softness: 0.06, color: "#ffeedd" }, dome: { fraction: 0.32, intensity: 1.2 },
     fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
   },
   {

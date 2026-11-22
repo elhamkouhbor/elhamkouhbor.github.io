@@ -4,7 +4,7 @@
 //   "hero-leaves" writes the blurred leaf silhouette used by the live hero sculpture for its leaf shadows.
 import { build } from "esbuild";
 import { chromium } from "playwright-core";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import sharp from "sharp";
 
@@ -23,6 +23,10 @@ const assets = {
   "fold-shot": await crop("src/assets/projects/fold-studio.jpg", [504, 0, 1872, 1170]),
   "dieline-shot": await crop("src/assets/projects/dieline-creator.jpg", [504, 72, 1872, 1170]),
   "colorlab-shot": await crop("src/assets/projects/color-lab.jpg", [0, 0, 1720, 1075]),
+  "kashi-shot": await crop("src/assets/projects/kashi-studio.jpg", [0, 0, 2560, 1600]),
+  // two real tiles exported from Kashi Studio (eslimi and girih), used as the glaze of the ceramic tiles
+  "kashi-tile-eslimi": `data:image/png;base64,${readFileSync("src/assets/projects/kashi-tile-eslimi.png").toString("base64")}`,
+  "kashi-tile-girih": `data:image/png;base64,${readFileSync("src/assets/projects/kashi-tile-girih.png").toString("base64")}`,
 };
 await page.evaluate((a) => { window.ART_ASSETS = a; }, assets);
 const names = await page.evaluate(() => ART.ARTWORKS.map((a) => a.name));

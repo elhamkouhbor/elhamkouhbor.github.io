@@ -14,6 +14,7 @@ import heroRibbon from "../assets/art/hero-ribbon.jpg";
 import projectFold from "../assets/art/project-fold.jpg";
 import projectDieline from "../assets/art/project-dieline.jpg";
 import projectColorLab from "../assets/art/project-colorlab.jpg";
+import projectKashi from "../assets/art/project-kashi.jpg";
 import closingWaves from "../assets/art/closing-waves.jpg";
 
 export const images = { hero: heroRibbon, closing: closingWaves };
@@ -46,7 +47,7 @@ export interface Copy {
     footerNote: string;
   };
   hero: { kicker: string; intro: string; cta: string };
-  projects: Record<"fold" | "dieline" | "color-lab", ProjectCopy>;
+  projects: Record<"fold" | "dieline" | "color-lab" | "kashi-studio", ProjectCopy>;
   practice: { title: string; statement: string; note: string; interestsLabel: string; interests: string[]; toolsLabel: string };
   closing: { title: string; text: string };
   notFound: { title: string; text: string; home: string };
@@ -111,6 +112,18 @@ const en: Copy = {
       linkLabel: "Open Color Lab",
       alt: "The Color Lab workspace on a screen leaning against a warm paper wall, showing a website in its original colours next to a deuteranopia simulation. An open paper colour fan leans against the screen.",
       caption: "Color Lab comparing a palette with a deuteranopia simulation, beside a paper colour fan.",
+    },
+    "kashi-studio": {
+      title: "Kashi Studio",
+      summary: "A vector studio for designing Persian tiles, from geometric girih to flowers, borders and medallions.",
+      body: "Start from more than a hundred tile designs, some based on documented historical tiles, and change their geometry, motifs and colours. Every line stays editable, and finished designs are saved as vector files at their real size.",
+      meta: [
+        { label: "Type", value: "Web application" },
+        { label: "Focus", value: "Pattern, ornament, vector design" },
+      ],
+      linkLabel: "Open Kashi Studio",
+      alt: "The Kashi Studio workspace on a screen against a warm paper wall, showing a blue and white haft-rang tile panel with a central medallion. Two glazed tiles made from Kashi Studio designs stand and lie in front of it.",
+      caption: "A haft-rang panel in Kashi Studio, with two glazed tiles from its designs.",
     },
   },
   practice: {
@@ -188,6 +201,18 @@ const sv: Copy = {
       alt: "Arbetsytan i Color Lab på en skärm som lutar mot en varm pappersvägg. Den visar en webbplats i originalfärgerna bredvid en simulering av deuteranopi. En uppslagen färgsolfjäder i papper lutar mot skärmen.",
       caption: "Color Lab jämför en palett med en simulering av deuteranopi, bredvid en färgsolfjäder i papper.",
     },
+    "kashi-studio": {
+      title: "Kashi Studio",
+      summary: "En vektorstudio för persiska kakelplattor, från geometrisk girih till blommor, bårder och medaljonger.",
+      body: "Utgå från över hundra kakelmönster, varav några bygger på dokumenterade historiska plattor, och ändra geometri, motiv och färger. Varje linje går att redigera, och färdiga mönster sparas som vektorfiler i verklig storlek.",
+      meta: [
+        { label: "Typ", value: "Webbapplikation" },
+        { label: "Fokus", value: "Mönster, ornamentik, vektordesign" },
+      ],
+      linkLabel: "Öppna Kashi Studio",
+      alt: "Arbetsytan i Kashi Studio på en skärm mot en varm pappersvägg. Den visar en blåvit haft-rang-panel med en medaljong i mitten. Två glaserade plattor med mönster från Kashi Studio står och ligger framför skärmen.",
+      caption: "En haft-rang-panel i Kashi Studio, med två glaserade plattor från dess mönster.",
+    },
   },
   practice: {
     title: "Inriktning",
@@ -264,6 +289,18 @@ const fa: Copy = {
       alt: "فضای کاری Color Lab روی صفحه‌نمایشی که به دیواری کاغذی با رنگ گرم تکیه داده شده است و یک وب‌سایت را در رنگ‌های اصلی کنار شبیه‌سازی دوترانوپیا نشان می‌دهد. یک بادبزن رنگ کاغذی باز به صفحه تکیه داده شده است.",
       caption: "مقایسهٔ یک پالت با شبیه‌سازی دوترانوپیا در Color Lab، کنار یک بادبزن رنگ کاغذی.",
     },
+    "kashi-studio": {
+      title: "Kashi Studio",
+      summary: "استودیوی برداری برای طراحی کاشی ایرانی، از گره‌چینی هندسی تا گل، حاشیه و ترنج.",
+      body: "از میان بیش از صد طرح کاشی، که برخی از آن‌ها بر پایهٔ کاشی‌های تاریخیِ مستند ساخته شده‌اند، یکی را برگزینید و هندسه، نقش‌ها و رنگ‌هایش را تغییر دهید. همهٔ خطوط قابل ویرایش می‌مانند و طرح نهایی به صورت فایل برداری با اندازهٔ واقعی ذخیره می‌شود.",
+      meta: [
+        { label: "نوع", value: "اپلیکیشن وب" },
+        { label: "تمرکز", value: "نقش، تزئین، طراحی برداری" },
+      ],
+      linkLabel: "باز کردن Kashi Studio",
+      alt: "فضای کاری Kashi Studio روی صفحه‌نمایشی در برابر دیواری کاغذی با رنگ گرم، با یک تابلوی کاشی هفت‌رنگ آبی و سفید و ترنجی در میانه. دو کاشی لعاب‌دار با طرح‌هایی از Kashi Studio جلوی آن ایستاده و خوابیده‌اند.",
+      caption: "تابلوی هفت‌رنگ در Kashi Studio، کنار دو کاشی لعاب‌دار از طرح‌های آن.",
+    },
   },
   practice: {
     title: "رویکرد",
@@ -294,6 +331,7 @@ const projectBase = [
   { id: "fold", n: "01", link: "/fold/", source: "https://github.com/elhamkouhbor/fold", image: projectFold },
   { id: "dieline", n: "02", link: "/Dieline/", source: "https://github.com/elhamkouhbor/Dieline", image: projectDieline },
   { id: "color-lab", n: "03", link: "/color-lab/", source: "https://github.com/elhamkouhbor/color-lab", image: projectColorLab },
+  { id: "kashi-studio", n: "04", link: "/kashi-studio/", source: "https://github.com/elhamkouhbor/kashi-studio", image: projectKashi },
 ] as const;
 
 export function projects(lang: Lang): Project[] {
