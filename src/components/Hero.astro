@@ -5,7 +5,7 @@ import { hero } from "../content/content";
 
 <section class="hero" aria-labelledby="hero-title">
   <div class="hero__art" aria-hidden="true">
-    <div class="hero__stage" data-sculpture>
+    <div class="hero__stage" data-sculpture="hero">
     <Picture
       src={hero.image}
       alt=""
@@ -30,33 +30,8 @@ import { hero } from "../content/content";
 </section>
 
 <script>
-  // The hero image is the first frame of a slowly morphing 3D paper sculpture. When motion is allowed and
-  // the device can render it, the live version loads after the page and fades in over the identical image.
-  // Reduced motion, Save-Data, missing WebGL 2 or any error keep the static image.
-  const stage = document.querySelector<HTMLElement>("[data-sculpture]");
-  const img = stage?.querySelector<HTMLImageElement>("img");
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)");
-  let started = false;
-  const eligible = () => {
-    if (!stage || !img || reduce.matches || started) return false;
-    if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return false;
-    try { // software-only WebGL (no GPU) would be slow and drain the battery: keep the image there
-      const gl = document.createElement("canvas").getContext("webgl2", { failIfMajorPerformanceCaveat: true });
-      gl?.getExtension("WEBGL_lose_context")?.loseContext();
-      return !!gl;
-    } catch { return false; }
-  };
-  const start = () => {
-    if (!eligible()) return;
-    started = true;
-    import("../scripts/sculpture/live")
-      .then((m) => m.mount(stage!, img!))
-      .then((s) => { (stage as HTMLElement & { sculpture?: unknown }).sculpture = s; }) // inspected by the tests
-      .catch(() => { /* the static image stays */ });
-  };
-  const later = () => ("requestIdleCallback" in window ? requestIdleCallback(start, { timeout: 2000 }) : setTimeout(start, 600));
-  if (document.readyState === "complete") later(); else addEventListener("load", later, { once: true });
-  reduce.addEventListener("change", () => { if (!reduce.matches) later(); });
+  // The hero image is the first frame of a slowly morphing 3D paper sculpture (src/scripts/sculpture).
+  import "../scripts/sculpture/loader";
 </script>
 
 <style>
@@ -69,10 +44,6 @@ import { hero } from "../content/content";
   }
   .hero__stage { position: absolute; inset: 0; }
   .hero__art :global(picture) { display: block; height: 100%; }
-  .hero__stage :global(canvas.hero__live) {
-    position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.6s var(--ease);
-  }
-  .hero__stage :global(canvas.hero__live.is-live) { opacity: 1; }
   .hero__art :global(img) { width: 100%; height: 100%; object-fit: cover; object-position: 72% 50%; }
   .hero__text { position: relative; display: grid; justify-items: start; gap: clamp(1.4rem, 2.6vw, 2rem); padding-block: 8rem 6rem; }
   .hero__title { font-size: var(--display-lg); font-weight: 320; line-height: 0.95; letter-spacing: -0.035em; }

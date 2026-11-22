@@ -8,7 +8,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import ek from "../../src/assets/monogram/ek.json";
-import { Band, CAMERA, FRAME, GOBO, KEY_DIR, MAIN, SAGE, goboBasis, type BandDef } from "../../src/scripts/sculpture/shape";
+import { Band, GOBO, KEY_DIR, VIEWS, goboBasis, type View } from "../../src/scripts/sculpture/shape";
 
 type V = THREE.Vector3;
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -302,9 +302,14 @@ function branch(seed: number, o: { at: [number, number, number]; normal: [number
   return m;
 }
 
-/** A band of the hero sculpture (shared geometry with the live renderer), at its first keyframe. */
-function sculptureBand(def: BandDef) {
-  const b = new Band(def), g = new THREE.Group();
+/** The paper of a sculpture view (shared geometry with the live renderer), at the start of the loop. */
+function sculptureBands(view: View) {
+  const g = new THREE.Group();
+  for (const { paper, pose } of view.bands) g.add(sculptureBand(paper, pose(0)));
+  return g;
+}
+function sculptureBand(def: ConstructorParameters<typeof Band>[0], first: ConstructorParameters<typeof Band>[1]) {
+  const b = new Band(def, first), g = new THREE.Group();
   const mats = [paper(def.front, { side: THREE.DoubleSide }), paper(def.back, { side: THREE.DoubleSide }), paper(def.edge, { side: THREE.DoubleSide, normalMap: null })];
   [b.front, b.back, b.edges].forEach((geo, i) => g.add(mesh(geo, mats[i])));
   return g;
@@ -363,19 +368,18 @@ const along = (target: [number, number, number], dir: [number, number, number], 
   const d = v(...dir).normalize(); return [target[0] + d.x * dist, target[1] + d.y * dist, target[2] + d.z * dist];
 };
 
-const HERO_KEY = KEY_DIR;
 const STAGE_KEY: [number, number, number] = [-0.55, 0.6, 0.58];
 
 export const ARTWORKS: ArtSpec[] = [
   {
     // The live hero sculpture (src/scripts/sculpture) at the start of its loop: this image is its first frame.
-    name: "hero-ribbon", width: FRAME.width, height: FRAME.height, bg: P2.cream, shadowExtent: 1300,
+    name: "hero-ribbon", width: VIEWS.hero.frame.width, height: VIEWS.hero.frame.height, bg: P2.cream, shadowExtent: VIEWS.hero.shadowExtent,
     build: (s) => {
-      s.add(sweep(P2.cream, 9000, 2600, 2000, 420));
-      s.add(sculptureBand(MAIN), sculptureBand(SAGE));
+      s.add(sweep(P2.cream, ...VIEWS.hero.sweep));
+      s.add(sculptureBands(VIEWS.hero));
       s.add(branch(7, { at: along(GOBO.at, KEY_DIR, GOBO.dist), normal: KEY_DIR, size: GOBO.size, leaves: 5, spin: 0.6 }));
     },
-    camera: { pos: CAMERA.pos, target: CAMERA.target, fov: CAMERA.fov, aperture: 26, focus: CAMERA.focus },
+    camera: { ...VIEWS.hero.camera, aperture: 26 },
     key: { dir: KEY_DIR, intensity: 3.2, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.6 },
     fill: 1.25, env: 0.28, exposure: 1.04, samples: 128, grain: 0.012, vignette: 0.0,
   },
@@ -409,18 +413,17 @@ export const ARTWORKS: ArtSpec[] = [
     fill: 0.8, env: 0.2, exposure: 1.0, samples: 128, grain: 0.01, vignette: 0.06,
   },
   {
-    name: "closing-waves", width: 2800, height: 1000, bg: P2.cream, shadowExtent: 1300,
+    // The far ends of the same sheets (closing section), at the same moment of the loop as the hero image.
+    name: "closing-waves", width: VIEWS.closing.frame.width, height: VIEWS.closing.frame.height, bg: P2.cream, shadowExtent: VIEWS.closing.shadowExtent,
     build: (s) => {
-      s.add(sweep(P2.cream, 6000, 2000, 1600, 400));
-      s.add(ribbon([[-1700, 1, 300], [-1100, 1, 300], [-800, 120, 260], [-560, 300, 200], [-260, 340, 160], [40, 200, 160], [300, 40, 200], [600, 1, 240]],
-        { width: 900, twist: 0.15, front: P2.creamLit, back: P2.sage, across: [0.2, 0, 1] }));
-      s.add(ribbon([[1700, 1, 380], [1200, 1, 360], [950, 110, 320], [760, 230, 280], [560, 200, 280]],
-        { width: 600, twist: -0.2, front: P2.clay, back: P2.creamLit, across: [-0.2, 0, 1] }));
-      s.add(branch(45, { at: along([0, 250, 0], HERO_KEY, 900), normal: HERO_KEY, size: 1000, leaves: 4, spin: 1.2 }));
+      s.add(sweep(P2.cream, ...VIEWS.closing.sweep));
+      s.add(sculptureBands(VIEWS.closing));
+      const at: [number, number, number] = [GOBO.at[0] + VIEWS.closing.gobo[0], GOBO.at[1] + VIEWS.closing.gobo[1], GOBO.at[2] + VIEWS.closing.gobo[2]];
+      s.add(branch(7, { at: along(at, KEY_DIR, GOBO.dist), normal: KEY_DIR, size: GOBO.size, leaves: 5, spin: 0.6 }));
     },
-    camera: { pos: [0, 640, 2600], target: [0, 230, 0], fov: 30 },
-    key: { dir: HERO_KEY, intensity: 3.0, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.1 },
-    fill: 0.6, env: 0.16, exposure: 1.06, samples: 96, grain: 0.012, vignette: 0.0,
+    camera: { ...VIEWS.closing.camera, aperture: 14 },
+    key: { dir: KEY_DIR, intensity: 3.2, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.6 },
+    fill: 1.25, env: 0.28, exposure: 1.04, samples: 128, grain: 0.012, vignette: 0.0,
   },
 ];
 

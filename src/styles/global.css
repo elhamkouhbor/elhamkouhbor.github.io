@@ -101,3 +101,7 @@ html.reveal-on [data-reveal="img"] { transform: none; transition-duration: 1.4s;
 html.reveal-on [data-reveal="img"] :is(img) { transform: scale(1.035); transition: transform 2.2s var(--ease); }
 html.reveal-on [data-reveal].is-in { opacity: 1; transform: none; }
 html.reveal-on [data-reveal="img"].is-in :is(img) { transform: none; }
+
+/* Live paper sculpture canvas (src/scripts/sculpture): fades in over the identical static image. */
+canvas.sculpture__live { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.6s var(--ease); }
+canvas.sculpture__live.is-live { opacity: 1; }

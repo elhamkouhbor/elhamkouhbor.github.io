@@ -44,7 +44,7 @@ shadows cast by an invisible branch).
 
 - `hero-ribbon`: the first frame of the live hero sculpture (see below), rendered offline at full quality.
 - `hero-leaves.png`: the blurred leaf silhouette seen from the key light, used for the live leaf shadows.
-- `closing-waves`: curling sheets of clay, cream and sage paper.
+- `closing-waves`: the far ends of the same sheets, as the closing section shows them at the start of the loop.
 - `project-fold`, `project-dieline`: the **real application screenshots** in
   `src/assets/projects/` shown on a slim panel, each with one physical object (a sage paper carton for
   Fold, a print of the same tray layout for Dieline). `render.mjs` crops the screenshots
@@ -70,10 +70,15 @@ It is real geometry, not a video or an image effect.
   (curvature), where it lifts off the floor and how it twists. The loop interpolates these numbers with a
   periodic spline, so position and speed are continuous across the loop boundary, and the sheet keeps
   its length. The mesh (front, back and cut edges with real thickness) is rewritten in place each frame.
+- The closing section shows the other ends of the same two sheets, which run out of the hero along the
+  floor. The paper is shared: whatever the hero sculpture rolls up is taken from the slack at the far end,
+  and whatever it lets go returns there, so the waves at the bottom of the page rise and settle in step
+  with the shapes at the top (`TailDef` in `shape.ts`). Both views run on one page clock.
 - `src/scripts/sculpture/live.ts` renders it with three.js: soft key and sky shadows, warm bounce light,
   and leaf shadows projected along the key light. It is a separate chunk, loaded only after the page
-  has loaded, when motion is allowed, Save-Data is off and a hardware WebGL 2 context is available.
-- The static hero image is the same scene at the start of the loop, so the canvas fades in over it without
+  has loaded, when motion is allowed, Save-Data is off and a hardware WebGL 2 context is available
+  (`loader.ts`). The closing view starts about a screen before it is reached; each view pauses off screen.
+- The static hero and closing images are the same scenes at the start of the loop, so the canvas fades in over it without
   a visible change. The image stays underneath: reduced motion, software-only graphics, a failed
   download, a shader error or a lost context all leave (or fade back to) the image.
 - Rendering pauses when the hero is off screen or the tab is hidden, is capped at 30 fps on phones,

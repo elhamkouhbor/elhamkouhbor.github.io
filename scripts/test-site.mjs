@@ -64,6 +64,12 @@ console.log("\nHero sculpture (geometry over one full loop)");
   check(r.self > 20, "no band passes through itself", String(r.self));
   check(r.wall < 10, "paper never pushes through the wall", r.wall.toFixed(1));
   check(r.stretch < 0.002, "paper keeps its length (no stretching)", r.stretch.toExponential(2));
+  const c = r.closing;
+  check(c.crest[1] - c.crest[0] > 120, `closing: the far ends rise and settle with the hero (crest ${c.crest[0].toFixed(0)}–${c.crest[1].toFixed(0)})`);
+  check(c.seam < 1e-3, "closing: loop is seamless");
+  check(c.top > 0.15 && c.bottom < 0.98, "closing: waves stay inside the band", `${c.top.toFixed(3)}–${c.bottom.toFixed(3)}`);
+  check(c.mutual > 20 && c.wall < 10, "closing: no collisions, paper stays off the wall", `${c.mutual} / ${c.wall.toFixed(1)}`);
+  check(c.stretch < 0.002, "closing: paper keeps its length", c.stretch.toExponential(2));
 }
 
 // ---------- Browser checks ----------
@@ -124,9 +130,11 @@ for (const vp of viewports) for (const reduced of [false, true]) {
   check(r.anchors.length === 0, "all in-page anchors resolve", r.anchors.join(", "));
   if (reduced) check(!r.animClass, "reduced motion: animation gate off");
   await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
-  const hero = await page.evaluate(() => { const i = document.querySelector(".hero__art img"); return { img: !!i && i.complete && i.naturalWidth > 0 && getComputedStyle(i).visibility !== "hidden", canvas: document.querySelectorAll("canvas.hero__live").length }; });
+  const hero = await page.evaluate(() => { const i = document.querySelector(".hero__art img"); return { img: !!i && i.complete && i.naturalWidth > 0 && getComputedStyle(i).visibility !== "hidden", canvas: document.querySelectorAll("canvas.sculpture__live").length }; });
   check(hero.img, "hero image shown (never blank)");
-  if (reduced) check(hero.canvas === 0, "reduced motion: static hero image, no 3D animation");
+  const closingImg = await page.evaluate(() => { const i = document.querySelector(".closing__art img"); return !!i && i.complete && i.naturalWidth > 0; });
+  check(closingImg, "closing image shown (never blank)");
+  if (reduced) check(hero.canvas === 0, "reduced motion: static images, no 3D animation");
   check(errors.length === 0, "no console errors", errors.slice(0, 3).join(" | "));
   check(badResponses.length === 0, "no failed requests", badResponses.slice(0, 3).join(", "));
 
@@ -147,12 +155,12 @@ for (const vp of viewports) for (const reduced of [false, true]) {
   if (!probe || /SwiftShader|llvmpipe|software/i.test(probe)) console.log("\nLive hero (GPU): skipped, no hardware WebGL here");
   else {
     console.log(`\nLive hero (GPU: ${probe.replace(/\s*\(0x[0-9A-F]+\)/gi, "")})`);
-    const S = () => document.querySelector("[data-sculpture]").sculpture;
+    const S = () => document.querySelector('[data-sculpture="hero"]').sculpture;
     for (const vp of [viewports[0], viewports[2]]) {
       const page = await gpu.newPage({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch, deviceScaleFactor: vp.isMobile ? 3 : 1 });
       const errors = []; page.on("console", (m) => m.type() === "error" && errors.push(m.text())); page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(base + "/", { waitUntil: "load" });
-      const live = await page.waitForFunction(() => document.querySelector("canvas.hero__live.is-live"), null, { timeout: 15000 }).then(() => true, () => false);
+      const live = await page.waitForFunction(() => document.querySelector(".hero canvas.sculpture__live.is-live"), null, { timeout: 15000 }).then(() => true, () => false);
       check(live, `${vp.name}: live sculpture fades in over the image`);
       if (!live) { await page.close(); continue; }
       await page.waitForTimeout(4500);
@@ -161,21 +169,35 @@ for (const vp of viewports) for (const reduced of [false, true]) {
       // the first frame of the loop matches the static image it replaces (seamless hand-off)
       const shot = async () => (await sharp(await page.locator(".hero__art").screenshot()).resize(240, 200, { fit: "fill" }).removeAlpha().raw().toBuffer());
       const diff = (x, y) => { let d = 0; for (let i = 0; i < x.length; i++) d += Math.abs(x[i] - y[i]); return d / x.length; };
-      await page.evaluate(() => { document.documentElement.classList.remove("intro"); const c = document.querySelector("canvas.hero__live"); c.style.transition = "none"; c.style.animation = "none"; });
+      await page.evaluate(() => { document.documentElement.classList.remove("intro"); const c = document.querySelector(".hero canvas.sculpture__live"); c.style.transition = "none"; c.style.animation = "none"; });
       await page.addStyleTag({ content: ".hero__stage{animation:none!important}" });
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(300);
       await page.evaluate((f) => eval(f)().renderAt(0), `(${S})`);
       const live0 = await shot();
       await page.evaluate((f) => eval(f)().renderAt(1 - 1e-6), `(${S})`); const live1 = await shot();
       await page.evaluate((f) => eval(f)().renderAt(0.5), `(${S})`); const mid = await shot();
-      await page.evaluate(() => { document.querySelector("canvas.hero__live").style.opacity = "0"; }); await page.waitForTimeout(100);
+      await page.evaluate(() => { document.querySelector(".hero canvas.sculpture__live").style.opacity = "0"; }); await page.waitForTimeout(100);
       const poster = await shot();
+      await page.evaluate(() => { document.querySelector(".hero canvas.sculpture__live").style.opacity = ""; });
       check(diff(live0, live1) < 0.5, `${vp.name}: no jump at the loop boundary (Δ ${diff(live0, live1).toFixed(2)})`);
       check(diff(live0, poster) < 6 && diff(live0, poster) < diff(live0, mid) / 2, `${vp.name}: first frame matches the static image (Δ ${diff(live0, poster).toFixed(1)}, mid-loop Δ ${diff(live0, mid).toFixed(1)})`);
       // pauses when the hero is out of view (the screenshots above scrolled it back in)
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(500);
       const p1 = (await page.evaluate((f) => eval(f)().state(), `(${S})`)); await page.waitForTimeout(1200); const p2 = (await page.evaluate((f) => eval(f)().state(), `(${S})`));
       check(!p2.running && p1.phase === p2.phase, `${vp.name}: animation pauses when the hero is off screen`);
+      await page.evaluate((f) => eval(f)().resume(), `(${S})`);
+      // the closing section shows the other ends of the same sheets, on the same clock as the hero
+      const closingLive = await page.waitForFunction(() => document.querySelector(".closing canvas.sculpture__live.is-live"), null, { timeout: 15000 }).then(() => true, () => false);
+      check(closingLive, `${vp.name}: closing view comes alive before it is reached`);
+      if (closingLive) {
+        await page.locator(".closing__art").scrollIntoViewIfNeeded(); await page.waitForTimeout(2500);
+        const sync = await page.evaluate(() => { const c = document.querySelector('[data-sculpture="closing"]').sculpture.state(); return { phase: c.phase, clock: c.clock, fps: c.fps }; });
+        const d = Math.min(Math.abs(sync.phase - sync.clock), 1 - Math.abs(sync.phase - sync.clock));
+        check(d < 0.01, `${vp.name}: closing follows the shared page clock (Δ ${d.toFixed(4)})`);
+        check(sync.fps >= (vp.isMobile ? 27 : 50), `${vp.name}: closing frame rate (${sync.fps.toFixed(0)} fps)`);
+        const heroState = await page.evaluate((f) => eval(f)().state(), `(${S})`);
+        check(!heroState.running, `${vp.name}: hero pauses while the closing runs`);
+      }
       check(errors.length === 0, `${vp.name}: no console errors`, errors.slice(0, 3).join(" | "));
       await page.close();
     }

@@ -11,12 +11,24 @@ import {
 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import leavesUrl from "../../assets/art/hero-leaves.png?url";
-import { Band, CAMERA, CYCLE_SECONDS, FRAME, KEY_DIR, MAIN, PALETTE, SAGE, goboBasis, stateAt, type BandDef } from "./shape";
+import { Band, CYCLE_SECONDS, KEY_DIR, PALETTE, VIEWS, goboBasis, type Paper, type Vec3 } from "./shape";
+
+/**
+ * One clock for the whole page: the hero and the closing section show two ends of the same sheets, so they
+ * must be at the same moment of the loop. It starts with the first view that comes alive (at phase 0, the
+ * frame the static images show) and keeps running while views are paused off screen.
+ */
+let clockStart = -1;
+const clockPhase = (now: number) => {
+  if (clockStart < 0) clockStart = now;
+  return ((now - clockStart) / 1000 / CYCLE_SECONDS) % 1;
+};
 
 export interface Sculpture {
-  /** Render one frame at loop phase ∈ [0, 1) (used by tests). */
+  /** Render one frame at loop phase ∈ [0, 1) (used by tests; the running loop follows the page clock again). */
   renderAt(phase: number): void;
-  readonly state: () => { running: boolean; pixelRatio: number; fps: number; phase: number };
+  resume(): void;
+  readonly state: () => { running: boolean; pixelRatio: number; fps: number; phase: number; clock: number };
   destroy(): void;
 }
 
@@ -41,8 +53,8 @@ function mottle(): Texture {
 }
 
 /** Projects the blurred leaf silhouette along the key light; only the key light (index 0) is attenuated. */
-function withLeaves<M extends Material>(m: M, cookie: Texture): M {
-  const b = goboBasis();
+function withLeaves<M extends Material>(m: M, cookie: Texture, shift: Vec3): M {
+  const b = goboBasis(shift);
   m.onBeforeCompile = (sh: WebGLProgramParametersWithUniforms) => {
     Object.assign(sh.uniforms, {
       hcCookie: { value: cookie }, hcCentre: { value: b.centre }, hcE1: { value: b.e1 }, hcE2: { value: b.e2 },
@@ -67,15 +79,15 @@ function withLeaves<M extends Material>(m: M, cookie: Texture): M {
   return m;
 }
 
-function paper(color: string, map: Texture | null, cookie: Texture) {
+function paper(color: string, map: Texture | null, cookie: Texture, shift: Vec3) {
   return withLeaves(new MeshPhysicalMaterial({
     color: new Color(color), map, roughness: 0.88, sheen: 0.4, sheenRoughness: 0.85, sheenColor: new Color("#fff8ef"),
     side: DoubleSide, dithering: true,
-  }), cookie);
+  }), cookie, shift);
 }
 
 /** Cyclorama: floor curving up into the back wall (same profile as scripts/art). */
-function sweep(color: string, cookie: Texture, w = 9000, d = 2600, h = 2000, r = 420) {
+function sweep(color: string, cookie: Texture, shift: Vec3, [w, d, h, r]: [number, number, number, number]) {
   const pts: [number, number][] = [[d, 0]];
   for (let i = 0; i <= 24; i++) { const a = (i / 24) * Math.PI / 2; pts.push([-r * Math.sin(a), r - r * Math.cos(a)]); }
   pts.push([-r, h]);
@@ -83,14 +95,14 @@ function sweep(color: string, cookie: Texture, w = 9000, d = 2600, h = 2000, r =
   pts.forEach(([z, y]) => { P.push(-w / 2, y, z, w / 2, y, z); });
   for (let i = 0; i + 1 < pts.length; i++) { const a = i * 2; I.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
   const g = new BufferGeometry(); g.setAttribute("position", new Float32BufferAttribute(P, 3)); g.setIndex(I); g.computeVertexNormals();
-  const m = new Mesh(g, withLeaves(new MeshStandardMaterial({ color: new Color(color), roughness: 0.96, side: DoubleSide, dithering: true }), cookie));
+  const m = new Mesh(g, withLeaves(new MeshStandardMaterial({ color: new Color(color), roughness: 0.96, side: DoubleSide, dithering: true }), cookie, shift));
   m.receiveShadow = true;
   return m;
 }
 
-function bandMeshes(band: Band, def: BandDef, map: Texture, cookie: Texture) {
+function bandMeshes(band: Band, def: Paper, map: Texture, cookie: Texture, shift: Vec3) {
   const g = new Group();
-  for (const [geo, mat] of [[band.front, paper(def.front, map, cookie)], [band.back, paper(def.back, map, cookie)], [band.edges, paper(def.edge, null, cookie)]] as const) {
+  for (const [geo, mat] of [[band.front, paper(def.front, map, cookie, shift)], [band.back, paper(def.back, map, cookie, shift)], [band.edges, paper(def.edge, null, cookie, shift)]] as const) {
     const m = new Mesh(geo, mat); m.castShadow = geo !== band.edges; m.receiveShadow = true; m.frustumCulled = false; g.add(m);
   }
   return g;
@@ -98,10 +110,11 @@ function bandMeshes(band: Band, def: BandDef, map: Texture, cookie: Texture) {
 
 // ---- mount
 
-export async function mount(host: HTMLElement, img: HTMLImageElement): Promise<Sculpture> {
+export async function mount(host: HTMLElement, img: HTMLImageElement, viewName: keyof typeof VIEWS = "hero"): Promise<Sculpture> {
+  const view = VIEWS[viewName], FRAME = view.frame, CAMERA = view.camera;
   const coarse = matchMedia("(pointer: coarse)").matches || Math.min(screen.width, screen.height) < 600;
   const canvas = document.createElement("canvas");
-  canvas.className = "hero__live"; canvas.setAttribute("aria-hidden", "true");
+  canvas.className = "sculpture__live"; canvas.setAttribute("aria-hidden", "true");
   const renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: "default", failIfMajorPerformanceCaveat: true });
   renderer.setClearColor(PALETTE.cream);
   renderer.toneMapping = NeutralToneMapping; renderer.toneMappingExposure = LIGHT.exposure; renderer.outputColorSpace = SRGBColorSpace;
@@ -117,8 +130,9 @@ export async function mount(host: HTMLElement, img: HTMLImageElement): Promise<S
   pmrem.dispose();
 
   const map = mottle();
-  const main = new Band(MAIN), sage = new Band(SAGE);
-  scene.add(sweep(PALETTE.cream, cookie), bandMeshes(main, MAIN, map, cookie), bandMeshes(sage, SAGE, map, cookie));
+  const start = clockStart < 0 ? 0 : clockPhase(performance.now());
+  const bands = view.bands.map((b) => ({ ...b, mesh: new Band(b.paper, b.pose(0)) }));
+  scene.add(sweep(PALETTE.cream, cookie, view.gobo, view.sweep), ...bands.map((b) => bandMeshes(b.mesh, b.paper, map, cookie, view.gobo)));
   scene.add(new HemisphereLight(0xfff6ea, 0xd9b99c, LIGHT.hemi));
 
   // key light (soft shadows, leaf cookie) and a broad overhead "sky" that darkens the contact areas
@@ -132,8 +146,9 @@ export async function mount(host: HTMLElement, img: HTMLImageElement): Promise<S
     const c = l.shadow.camera; c.left = -extent; c.right = extent; c.top = extent; c.bottom = -extent; c.near = 100; c.far = 4000;
     scene.add(l); return l;
   };
-  light(new Vector3(...KEY_DIR), LIGHT.key, "#ffeedd", 1300, 16, 20);
-  const sky = light(new Vector3(0.05, 1, 0.35), LIGHT.sky, "#fbf6ef", 1500, 30, 24);
+  const ext = view.shadowExtent;
+  light(new Vector3(...KEY_DIR), LIGHT.key, "#ffeedd", ext, 16 * 1300 / ext, 20);
+  const sky = light(new Vector3(0.05, 1, 0.35), LIGHT.sky, "#fbf6ef", ext + 200, 30 * 1300 / ext, 24);
   sky.shadow.autoUpdate = false; // very soft and slow to change: refreshed every other frame
   let frameNo = 0;
 
@@ -153,15 +168,15 @@ export async function mount(host: HTMLElement, img: HTMLImageElement): Promise<S
   };
   resize();
 
-  let phase = 0;
+  let phase = start, frozen: number | null = null;
   const draw = (p: number) => {
-    main.update(stateAt(MAIN, p)); sage.update(stateAt(SAGE, p));
+    for (const b of bands) b.mesh.update(b.pose(p));
     if (frameNo++ % 2 === 0) sky.shadow.needsUpdate = true;
     renderer.render(scene, cam);
   };
   // compile off the main thread where supported, then check the first frame actually drew something
   await renderer.compileAsync(scene, cam);
-  draw(0);
+  draw(start);
   if (shaderError || renderer.info.render.triangles === 0 || renderer.getContext().isContextLost()) {
     renderer.dispose(); throw new Error("hero sculpture: first frame failed");
   }
@@ -180,7 +195,7 @@ export async function mount(host: HTMLElement, img: HTMLImageElement): Promise<S
     const dt = last ? now - last : Math.max(16.7, minInterval);
     if (dt < minInterval - 2) return; // frame cap on phones (30 fps)
     last = now;
-    phase = (phase + Math.min(dt, 100) / 1000 / CYCLE_SECONDS) % 1;
+    phase = frozen ?? clockPhase(now);
     draw(phase);
     frames++; acc += dt; if (dt > 250) stall = true;
     if (acc > 2000) { // every ~2 s adapt the resolution; one-off stalls (tab switch, GC) are ignored
@@ -217,15 +232,16 @@ export async function mount(host: HTMLElement, img: HTMLImageElement): Promise<S
   function destroy() {
     destroyed = true; cancelAnimationFrame(raf); io.disconnect(); ro.disconnect();
     document.removeEventListener("visibilitychange", onVis); reduce.removeEventListener("change", onReduce);
-    scene.traverse((o) => { if (o instanceof Mesh) { (o.material as Material).dispose(); if (o.geometry !== main.front && o.geometry !== sage.front) o.geometry.dispose(); } });
-    main.dispose(); sage.dispose(); map.dispose(); cookie.dispose(); env.dispose(); renderer.dispose();
+    scene.traverse((o) => { if (o instanceof Mesh) { (o.material as Material).dispose(); o.geometry.dispose(); } });
+    map.dispose(); cookie.dispose(); env.dispose(); renderer.dispose();
     canvas.remove();
   }
   wake();
 
   return {
-    renderAt: (p: number) => { phase = p; draw(p); },
-    state: () => ({ running: !!raf, pixelRatio, fps, phase }),
+    renderAt: (p: number) => { frozen = phase = p; draw(p); },
+    resume: () => { frozen = null; },
+    state: () => ({ running: !!raf, pixelRatio, fps, phase, clock: clockPhase(performance.now()) }),
     destroy: fail,
   };
 }

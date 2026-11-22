@@ -30,9 +30,28 @@ export interface BandState {
   twist: number;
   spiral: number;
 }
-export interface BandDef {
+/** The sheet itself: size, thickness, mesh resolution and the colours of its two faces and cut edge. */
+export interface Paper {
   width: number;
   thick: number;
+  /** Rows along the band and columns across it. */
+  seg: number;
+  ws: number;
+  front: string;
+  back: string;
+  edge: string;
+}
+/** Everything the mesh needs for one frame: centreline control points and how the cross-section turns. */
+export interface Pose {
+  pts: Vec3[];
+  across: Vec3;
+  /** Length of the lifted part at the free end (twist and tilt act on it only). */
+  lifted: number;
+  tilt: number;
+  twist: number;
+  spiral: number;
+}
+export interface BandDef extends Paper {
   /** Fixed points of the part lying flat on the floor, before the lift-off point. */
   lead: Vec3[];
   /** The sheet arrives at the lift-off point along its heading over this distance (a gentle turn on the floor). */
@@ -42,12 +61,6 @@ export interface BandDef {
   samples: number;
   /** +1 or -1: which face of the paper faces the inside of the curl. */
   side: 1 | -1;
-  /** Rows along the band and columns across it. */
-  seg: number;
-  ws: number;
-  front: string;
-  back: string;
-  edge: string;
   states: BandState[];
 }
 
@@ -131,6 +144,113 @@ export function centreline(def: BandDef, st: BandState): Vec3[] {
 }
 /** Cross direction of the band: perpendicular to the bending plane. */
 export const acrossOf = (def: BandDef, st: BandState): Vec3 => [-Math.sin(st.heading) * def.side, 0, Math.cos(st.heading) * def.side];
+/** Pose of a hero band at loop phase `phase`. */
+export function poseAt(def: BandDef, phase: number): Pose {
+  const st = stateAt(def, phase);
+  return { pts: centreline(def, st), across: acrossOf(def, st), lifted: st.lifted, tilt: st.tilt, twist: st.twist, spiral: st.spiral };
+}
+
+// ---- the far ends of the same sheets (shown by the closing section)
+
+/**
+ * The other end of a hero band. The paper between the two views runs along the floor out of sight, so
+ * every bit of paper the hero sculpture pulls in is taken from this end's slack, and every bit it lets go
+ * returns there: the wave here rises and settles in step with the shapes at the top of the page.
+ */
+export interface TailDef extends Paper {
+  source: BandDef;
+  /** Floor points the paper arrives along (out of view), then the wave from `a` to the free end `b`. */
+  lead: Vec3[];
+  a: Vec3;
+  b: Vec3;
+  /** Crest height at the start of the loop, number of humps, and where the free end hangs (fraction of the crest). */
+  crest: number;
+  humps: number;
+  lip: number;
+  /** Sideways lean of the crest, per unit of height, and a curve of the path in plan (depth at the middle). */
+  sway: number;
+  bend: number;
+  samples: number;
+  across: Vec3;
+  tilt: number;
+  twist: number;
+  spiral: number;
+}
+
+const curveCache = new Map<BandDef, CatmullRomCurve3>();
+/** Length of paper a hero band uses at `phase` (its centreline from the first floor point). */
+export function usedLength(def: BandDef, phase: number) {
+  const pts = poseAt(def, phase).pts;
+  let c = curveCache.get(def);
+  if (!c) { c = new CatmullRomCurve3(pts.map((p) => new Vector3(...p)), false, "centripetal"); c.arcLengthDivisions = 240; curveCache.set(def, c); }
+  pts.forEach((p, i) => c!.points[i].set(p[0], p[1], p[2]));
+  c.updateArcLengths();
+  return c.getLength();
+}
+const used0 = new Map<BandDef, number>();
+/** Paper the hero band has released (positive) or taken (negative) since the start of the loop. */
+export const slack = (def: BandDef, phase: number) => {
+  if (!used0.has(def)) used0.set(def, usedLength(def, 0));
+  return used0.get(def)! - usedLength(def, phase);
+};
+
+function wavePoints(t: TailDef, h: number, n: number): Vec3[] {
+  // humps of sin² (the first one rises gently from the floor), the last one stops partway down: the free end lifts
+  const q = t.humps - Math.asin(Math.sqrt(t.lip)) / Math.PI, out: Vec3[] = [];
+  for (let i = 0; i < n; i++) {
+    const s = i / (n - 1), hump = Math.min(t.humps - 1, Math.floor(q * s)), grow = 0.7 + 0.3 * (hump + 1) / t.humps;
+    const base = 0.16 * (s < 0.3 ? (s / 0.3) ** 2 * (3 - 2 * s / 0.3) : 1); // troughs rest just above the floor
+    const y = h * grow * ((1 - base) * Math.sin(Math.PI * q * s) ** 2 + base);
+    out.push([t.a[0] + (t.b[0] - t.a[0]) * s, 1 + y, t.a[2] + (t.b[2] - t.a[2]) * s + t.sway * y * Math.sin(Math.PI * s) + t.bend * Math.sin(Math.PI * s)]);
+  }
+  return out;
+}
+const polyLength = (p: Vec3[]) => p.slice(1).reduce((L, q, i) => L + Math.hypot(q[0] - p[i][0], q[1] - p[i][1], q[2] - p[i][2]), 0);
+const wave0 = new Map<TailDef, number>();
+/** Pose of a tail at `phase`: the crest height is solved so the wave holds exactly the paper available. */
+export function tailPose(t: TailDef, phase: number): Pose {
+  if (!wave0.has(t)) wave0.set(t, polyLength(wavePoints(t, t.crest, 64)));
+  const target = wave0.get(t)! + slack(t.source, phase), flat = polyLength(wavePoints(t, 0, 64));
+  let lo = 0, hi = 4000;
+  if (target > flat) for (let k = 0; k < 28; k++) { const m = (lo + hi) / 2; if (polyLength(wavePoints(t, m, 64)) < target) lo = m; else hi = m; }
+  return { pts: [...t.lead, ...wavePoints(t, lo, t.samples)], across: t.across, lifted: target, tilt: t.tilt, twist: t.twist, spiral: t.spiral };
+}
+
+export const CLAY_TAIL: TailDef = {
+  ...pick(MAIN), seg: 200, source: MAIN,
+  lead: [[-7000, 1, 760], [-3800, 1, 620]], a: [-1700, 1, 560], b: [-100, 1, 470],
+  crest: 210, humps: 2, lip: 0.35, sway: 0, bend: -180, samples: 22, across: [0, 0, 1], tilt: 0, twist: 0, spiral: 0.2,
+};
+export const SAGE_TAIL: TailDef = {
+  ...pick(SAGE), front: PALETTE.sage, back: PALETTE.creamLit, seg: 150, source: SAGE,
+  lead: [[7000, 1, 560], [3800, 1, 540]], a: [1650, 1, 540], b: [650, 1, 560],
+  crest: 250, humps: 1, lip: 0.3, sway: 0, bend: -120, samples: 16, across: [0, 0, 1], tilt: 0, twist: 0, spiral: -0.2,
+};
+function pick(d: Paper): Paper { return { width: d.width, thick: d.thick, seg: d.seg, ws: d.ws, front: d.front, back: d.back, edge: d.edge }; }
+
+// ---- views
+
+export interface View {
+  frame: { width: number; height: number };
+  camera: { pos: Vec3; target: Vec3; fov: number; focus: Vec3 };
+  /** Floor curving into the back wall: width, depth, height, radius. */
+  sweep: [number, number, number, number];
+  shadowExtent: number;
+  /** Shift of the leaf branch (the sun and branch are the same, the view looks at another part of the floor). */
+  gobo: Vec3;
+  bands: { paper: Paper; pose: (phase: number) => Pose }[];
+}
+export const VIEWS: Record<"hero" | "closing", View> = {
+  hero: {
+    frame: FRAME, camera: CAMERA, sweep: [9000, 2600, 2000, 420], shadowExtent: 1300, gobo: [0, 0, 0],
+    bands: [{ paper: MAIN, pose: (p) => poseAt(MAIN, p) }, { paper: SAGE, pose: (p) => poseAt(SAGE, p) }],
+  },
+  closing: {
+    frame: { width: 2800, height: 1000 }, camera: { pos: [0, 640, 2600], target: [0, 230, 0], fov: 30, focus: [0, 230, 0] },
+    sweep: [12000, 2600, 1600, 400], shadowExtent: 2400, gobo: [700, -120, 0],
+    bands: [{ paper: CLAY_TAIL, pose: (p) => tailPose(CLAY_TAIL, p) }, { paper: SAGE_TAIL, pose: (p) => tailPose(SAGE_TAIL, p) }],
+  },
+};
 
 // ---- geometry
 
@@ -149,9 +269,9 @@ export class Band {
   private readonly rowT: Float32Array; // tangent per row
   private readonly rowA: Float32Array; // cross direction per row
 
-  constructor(readonly def: BandDef) {
+  constructor(readonly def: Paper, first: Pose) {
     const { seg, ws, width } = def, n = (seg + 1) * (ws + 1);
-    this.curve = new CatmullRomCurve3(centreline(def, def.states[0]).map((p) => new Vector3(...p)), false, "centripetal");
+    this.curve = new CatmullRomCurve3(first.pts.map((p) => new Vector3(...p)), false, "centripetal");
     this.curve.arcLengthDivisions = 240;
     this.length = this.curve.getLength();
     this.grid = new Float32Array(n * 3); this.nrm = new Float32Array(n * 3);
@@ -187,18 +307,18 @@ export class Band {
       (g.attributes.position as BufferAttribute).setUsage(35048); // DYNAMIC_DRAW
       (g.attributes.normal as BufferAttribute).setUsage(35048);
     }
-    this.update(def.states[0]);
+    this.update(first);
   }
 
-  update(st: BandState) {
+  update(st: Pose) {
     const { seg, ws, width, thick } = this.def, L = this.length;
     const curve = this.curve;
-    centreline(this.def, st).forEach((p, i) => curve.points[i].set(p[0], p[1], p[2]));
+    st.pts.forEach((p, i) => curve.points[i].set(p[0], p[1], p[2]));
     curve.updateArcLengths();
     const Lc = curve.getLength();
     const c = new Vector3(), t = new Vector3(), a = new Vector3(), n = new Vector3(), tmp = new Vector3();
     const t0 = curve.getTangentAt(0), p0 = curve.getPointAt(0);
-    const across0 = new Vector3(...acrossOf(this.def, st)).normalize();
+    const across0 = new Vector3(...st.across).normalize();
     const G = this.grid, RT = this.rowT, RA = this.rowA;
 
     // centreline rows: the visible end is fixed at the curve end, the paper length L is constant
@@ -257,10 +377,10 @@ export class Band {
   dispose() { this.front.dispose(); this.back.dispose(); this.edges.dispose(); }
 }
 
-/** Light-space basis used for the leaf shadow (cookie) projection. */
-export function goboBasis() {
+/** Light-space basis used for the leaf shadow (cookie) projection; `shift` moves the branch (per view). */
+export function goboBasis(shift: Vec3 = [0, 0, 0]) {
   const d = new Vector3(...KEY_DIR).normalize();
   const e1 = new Vector3(0, 1, 0).cross(d).normalize(), e2 = d.clone().cross(e1).normalize();
-  const centre = new Vector3(...GOBO.at).addScaledVector(d, GOBO.dist);
+  const centre = new Vector3(...GOBO.at).add(new Vector3(...shift)).addScaledVector(d, GOBO.dist);
   return { d, e1, e2, centre, size: GOBO.size * 3.4 };
 }

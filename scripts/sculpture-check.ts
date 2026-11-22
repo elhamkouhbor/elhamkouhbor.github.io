@@ -4,10 +4,13 @@
 //  - no collisions between the two bands, no self-intersection, no paper pushed through the wall
 //  - the paper never stretches (constant length)
 import { PerspectiveCamera, Vector3 } from "three";
-import { Band, CAMERA, FRAME, MAIN, SAGE, stateAt, type BandDef, type BandState } from "../src/scripts/sculpture/shape";
+import { Band, MAIN, SAGE, VIEWS, poseAt, slack, stateAt, tailPose, CLAY_TAIL, SAGE_TAIL, type BandDef, type BandState, type View } from "../src/scripts/sculpture/shape";
 
-const cam = new PerspectiveCamera(CAMERA.fov, FRAME.width / FRAME.height, 50, 9000);
-cam.position.set(...CAMERA.pos); cam.lookAt(new Vector3(...CAMERA.focus)); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+const camera = (v: View) => {
+  const c = new PerspectiveCamera(v.camera.fov, v.frame.width / v.frame.height, 50, 9000);
+  c.position.set(...v.camera.pos); c.lookAt(new Vector3(...v.camera.focus)); c.updateMatrixWorld(); c.updateProjectionMatrix(); return c;
+};
+let cam = camera(VIEWS.hero);
 const flat = (s: BandState) => [s.lift[0], s.lift[1], s.heading, s.lifted, s.drift, s.tilt, s.twist, s.spiral, ...s.kappa];
 const pos = (b: Band) => b.front.attributes.position.array as Float32Array;
 
@@ -49,15 +52,34 @@ function length(b: Band) { const p = pos(b), ws = b.def.ws + 1, j = Math.floor(w
   for (let i = 1; i <= b.def.seg; i++) { const a = ((i - 1) * ws + j) * 3, c = (i * ws + j) * 3; L += Math.hypot(p[c] - p[a], p[c + 1] - p[a + 1], p[c + 2] - p[a + 2]); } return L; }
 
 export function run(steps = 120) {
-  const main = new Band(MAIN), sage = new Band(SAGE), L0 = [length(main), length(sage)];
-  const r = { seam: [seam(MAIN), seam(SAGE)], top: 1, left: 1, right: 0, mutual: Infinity, self: Infinity, wall: 0, wallAt: 0, stretch: 0 };
+  // hero: the sculpture itself
+  cam = camera(VIEWS.hero);
+  const main = new Band(MAIN, poseAt(MAIN, 0)), sage = new Band(SAGE, poseAt(SAGE, 0)), L0 = [length(main), length(sage)];
+  const r = { seam: [seam(MAIN), seam(SAGE)], top: 1, left: 1, right: 0, mutual: Infinity, self: Infinity, wall: 0, wallAt: 0, stretch: 0,
+    closing: { top: 1, bottom: 0, left: 1, right: 0, mutual: Infinity, wall: 0, stretch: 0, crest: [Infinity, 0], seam: 0, minHeight: Infinity } };
   for (let i = 0; i < steps; i++) {
-    const ph = i / steps; main.update(stateAt(MAIN, ph)); sage.update(stateAt(SAGE, ph));
+    const ph = i / steps; main.update(poseAt(MAIN, ph)); sage.update(poseAt(SAGE, ph));
     const bm = bbox(main), bs = bbox(sage);
     r.top = Math.min(r.top, bm.y0, bs.y0); r.left = Math.min(r.left, bm.x0); r.right = Math.max(r.right, bs.x1);
     r.mutual = Math.min(r.mutual, minDist(main, sage)); r.self = Math.min(r.self, minDist(main, null), minDist(sage, null));
-    const w = Math.max(wall(main), wall(sage)); if (w > r.wall) { r.wall = w; r.wallAt = ph; }
+    const w = Math.max(wall(main, VIEWS.hero.sweep[3]), wall(sage, VIEWS.hero.sweep[3])); if (w > r.wall) { r.wall = w; r.wallAt = ph; }
     r.stretch = Math.max(r.stretch, Math.abs(length(main) / L0[0] - 1), Math.abs(length(sage) / L0[1] - 1));
   }
-  return r;
+  // closing: the far ends of the same sheets, driven by the paper the hero releases
+  cam = camera(VIEWS.closing);
+  const c = r.closing, clay = new Band(CLAY_TAIL, tailPose(CLAY_TAIL, 0)), sg = new Band(SAGE_TAIL, tailPose(SAGE_TAIL, 0)), T0 = [length(clay), length(sg)];
+  for (let i = 0; i < steps; i++) {
+    const ph = i / steps; clay.update(tailPose(CLAY_TAIL, ph)); sg.update(tailPose(SAGE_TAIL, ph));
+    const a = bbox(clay), b = bbox(sg);
+    c.top = Math.min(c.top, a.y0, b.y0); c.bottom = Math.max(c.bottom, a.y1, b.y1); c.left = Math.min(c.left, a.x0); c.right = Math.max(c.right, b.x1);
+    c.mutual = Math.min(c.mutual, minDist(clay, sg)); c.wall = Math.max(c.wall, wall(clay, VIEWS.closing.sweep[3]), wall(sg, VIEWS.closing.sweep[3]));
+    c.stretch = Math.max(c.stretch, Math.abs(length(clay) / T0[0] - 1), Math.abs(length(sg) / T0[1] - 1));
+    const crest = Math.max(...tailPose(CLAY_TAIL, ph).pts.map((p) => p[1]));
+    c.crest = [Math.min(c.crest[0], crest), Math.max(c.crest[1], crest)];
+    c.minHeight = Math.min(c.minHeight, crest);
+  }
+  c.seam = Math.abs(Math.max(...tailPose(CLAY_TAIL, 0).pts.map((p) => p[1])) - Math.max(...tailPose(CLAY_TAIL, 1 - 1e-9).pts.map((p) => p[1])));
+  // the tails really are driven by the hero: their wave follows the paper the hero releases
+  r.closing.seam = c.seam;
+  return { ...r, slackRange: [Math.min(...Array.from({ length: 60 }, (_, i) => slack(MAIN, i / 60))), Math.max(...Array.from({ length: 60 }, (_, i) => slack(MAIN, i / 60)))] };
 }
