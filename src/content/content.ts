@@ -1,9 +1,9 @@
-// Page copy and image metadata, in English, Swedish and Farsi.
+// Page copy and image metadata, in English and Swedish.
 //
 // Writing rules for visible copy in every language: short, plain sentences. No em dashes, en dashes or
-// semicolons, including the Persian semicolon (scripts/test-site.mjs checks this). Describe what the
-// projects do, not how they are built. Product names (Fold, Dieline, Color Lab) and her name stay in
-// Latin script in all languages.
+// semicolons (scripts/test-site.mjs checks this). Describe what the
+// projects do, not how they are built. Product names (Fold, Dieline, Color Lab) and her name stay the same
+// in both languages.
 //
 // Project images are renders that show the real application screenshots (src/assets/projects) on a
 // panel, composed with one physical object. The background compositions are original renders from
@@ -229,95 +229,7 @@ const sv: Copy = {
   notFound: { title: "Sidan kunde inte hittas.", text: "Adressen kan ha ändrats. Allt finns på startsidan.", home: "Till startsidan" },
 };
 
-const fa: Copy = {
-  site: {
-    title: "Elham Kouhbor، طراح دیجیتال",
-    description: "Elham Kouhbor طراح دیجیتالی است که به ارتباطات بصری، تایپوگرافی، صفحه‌آرایی و تجربه‌های تعاملی علاقه دارد.",
-    ogImageAlt: "Elham Kouhbor، طراح دیجیتال. برگه‌ای کاغذ به رنگ گل رس که در نوری نرم پیچ می‌خورد.",
-  },
-  ui: {
-    skip: "رفتن به محتوا",
-    home: "Elham Kouhbor، صفحهٔ اصلی",
-    primaryNav: "منوی اصلی",
-    language: "زبان",
-    nav: { work: "نمونه‌کارها", practice: "رویکرد" },
-    opensGithub: "(صفحهٔ GitHub را باز می‌کند)",
-    selectedWork: "نمونه‌کارهای منتخب",
-    repoFor: (t) => `، کد منبع ${t}`,
-    backToTop: "بازگشت به بالا",
-    footerNote: "تصاویر پروژه‌ها اپلیکیشن‌های واقعی را نشان می‌دهند. همهٔ تصاویر دیگر رندرهای دیجیتالی هستند که برای همین سایت ساخته شده‌اند.",
-  },
-  hero: {
-    kicker: "طراح دیجیتال",
-    intro: "سلام، من الهام هستم. طراح دیجیتال هستم و به ارتباطات بصری، تجربه‌های تعاملی و جزئیات کوچکی علاقه دارم که یک طرح را کارآمد می‌کنند.",
-    cta: "دیدن نمونه‌کارهای منتخب",
-  },
-  projects: {
-    fold: {
-      title: "Fold",
-      summary: "فضای کاری تعاملی برای دیدن اینکه طرح تخت یک بسته‌بندی چگونه به شکل سه‌بعدی درمی‌آید.",
-      body: "یک طرح گسترده را باز کنید، گرافیک را اضافه کنید و آن را گام به گام تا بزنید. جعبهٔ نهایی را می‌توان پیش از چاپ چرخاند و از همهٔ زاویه‌ها بررسی کرد.",
-      meta: [
-        { label: "نوع", value: "اپلیکیشن وب" },
-        { label: "تمرکز", value: "تعامل، سه‌بعدی، ساختار" },
-      ],
-      linkLabel: "باز کردن Fold",
-      alt: "فضای کاری Fold روی صفحه‌نمایشی که به دیواری کاغذی با رنگ گرم تکیه داده شده است. یک جعبهٔ چای تاشده در نمای سه‌بعدی می‌چرخد. یک جعبهٔ کاغذی کوچک به رنگ سبز مریمی کنار صفحه ایستاده است.",
-      caption: "Fold در مرورگر، با یک جعبهٔ کاغذی برای نشان دادن اندازه.",
-    },
-    dieline: {
-      title: "Dieline",
-      summary: "ابزاری برای کشیدن طرح‌های دقیق بسته‌بندی، از نخستین اندازه‌ها تا فایل‌های آمادهٔ چاپ.",
-      body: "یک مدل جعبه انتخاب کنید و اندازه‌ها را وارد کنید تا طرح با مقیاس واقعی کشیده شود. بررسی‌های خودکار و پیش‌نمایش تاشده کمک می‌کنند مشکلات پیش از رفتن فایل‌ها به چاپ یا برش پیدا شوند.",
-      meta: [
-        { label: "نوع", value: "اپلیکیشن وب" },
-        { label: "تمرکز", value: "صفحه‌آرایی، اندازه‌گیری، تولید" },
-      ],
-      linkLabel: "باز کردن Dieline",
-      alt: "ابزار Dieline روی صفحه‌نمایش، با طرح اندازه‌گذاری‌شدهٔ یک سینی و پیش‌نمایش تاشدهٔ آن. برگه‌ای چاپی از همان طرح جلوی آن روی زمین است.",
-      caption: "طرح یک سینی در Dieline، کنار نسخهٔ چاپی همان نقشه.",
-    },
-    "color-lab": {
-      title: "Color Lab",
-      summary: "ابزاری برای انتخاب پالت رنگ، اطمینان از خوانا ماندن متن و دیدن اینکه رنگ‌ها ممکن است برای افرادی با کمبود دید رنگ چگونه به نظر برسند.",
-      body: "حدود ۵۰۰ پالت آزاد را مرور کنید و آن‌ها را روی یک وب‌سایت، یک پوستر و صفحهٔ یک اپلیکیشن امتحان کنید. کنتراست هنگام ویرایش بررسی می‌شود و نمای کنار هم همان طرح را با پروتانوپیا، دوترانوپیا یا تریتانوپیا نشان می‌دهد.",
-      meta: [
-        { label: "نوع", value: "اپلیکیشن وب" },
-        { label: "تمرکز", value: "رنگ، دسترس‌پذیری، طراحی بصری" },
-      ],
-      linkLabel: "باز کردن Color Lab",
-      alt: "فضای کاری Color Lab روی صفحه‌نمایشی که به دیواری کاغذی با رنگ گرم تکیه داده شده است و یک وب‌سایت را در رنگ‌های اصلی کنار شبیه‌سازی دوترانوپیا نشان می‌دهد. یک بادبزن رنگ کاغذی باز به صفحه تکیه داده شده است.",
-      caption: "مقایسهٔ یک پالت با شبیه‌سازی دوترانوپیا در Color Lab، کنار یک بادبزن رنگ کاغذی.",
-    },
-    "kashi-studio": {
-      title: "Kashi Studio",
-      summary: "استودیوی برداری برای طراحی کاشی ایرانی، از گره‌چینی هندسی تا گل، حاشیه و ترنج.",
-      body: "از میان بیش از صد طرح کاشی، که برخی از آن‌ها بر پایهٔ کاشی‌های تاریخیِ مستند ساخته شده‌اند، یکی را برگزینید و هندسه، نقش‌ها و رنگ‌هایش را تغییر دهید. همهٔ خطوط قابل ویرایش می‌مانند و طرح نهایی به صورت فایل برداری با اندازهٔ واقعی ذخیره می‌شود.",
-      meta: [
-        { label: "نوع", value: "اپلیکیشن وب" },
-        { label: "تمرکز", value: "نقش، تزئین، طراحی برداری" },
-      ],
-      linkLabel: "باز کردن Kashi Studio",
-      alt: "فضای کاری Kashi Studio روی صفحه‌نمایشی در برابر دیواری کاغذی با رنگ گرم، با یک تابلوی کاشی هفت‌رنگ آبی و سفید و ترنجی در میانه. دو کاشی لعاب‌دار با طرح‌هایی از Kashi Studio جلوی آن ایستاده و خوابیده‌اند.",
-      caption: "تابلوی هفت‌رنگ در Kashi Studio، کنار دو کاشی لعاب‌دار از طرح‌های آن.",
-    },
-  },
-  practice: {
-    title: "رویکرد",
-    statement: "در زمینهٔ طراحی دیجیتال و ارتباطات بصری کار می‌کنم. تایپوگرافی روشن، صفحه‌آرایی آرام و رابط‌هایی که فهمیدنشان آسان است برایم اهمیت دارند.",
-    note: "پروژه‌هایم اغلب میان صفحه‌نمایش و اشیای فیزیکی در رفت و آمدند، مانند ابزارهای بسته‌بندی که در بالا آمده‌اند.",
-    interestsLabel: "علاقه‌مندی‌ها",
-    interests: ["طراحی دیجیتال", "ارتباطات بصری", "تایپوگرافی", "صفحه‌آرایی", "تجربه‌های تعاملی"],
-    toolsLabel: "ابزارها",
-  },
-  closing: {
-    title: "از بازدید شما سپاسگزارم.",
-    text: "نمونه‌کارهای بیشتر مرا در GitHub ببینید و پروژه‌های تازه را دنبال کنید.",
-  },
-  notFound: { title: "این صفحه پیدا نشد.", text: "ممکن است نشانی تغییر کرده باشد. همه‌چیز در صفحهٔ اصلی است.", home: "بازگشت به صفحهٔ اصلی" },
-};
-
-export const copy: Record<Lang, Copy> = { en, sv, fa };
+export const copy: Record<Lang, Copy> = { en, sv };
 
 export interface Project extends ProjectCopy {
   id: keyof Copy["projects"];

@@ -1,11 +1,11 @@
 ---
 import { Picture } from "astro:assets";
 import { copy, projects } from "../content/content";
-import { locales, num, type Lang } from "../i18n/locales";
+import { type Lang } from "../i18n/locales";
 interface Props { lang: Lang }
 const { lang } = Astro.props;
 const ui = copy[lang].ui;
-const out = locales[lang].out;
+const out = "↗";
 const list = projects(lang);
 ---
 <section id="work" class="work" aria-labelledby="work-title">
@@ -24,7 +24,7 @@ const list = projects(lang);
           </figure>
 
           <div class="project__text">
-            <p class="project__n" data-reveal aria-hidden="true">{num(lang, p.n)}</p>
+            <p class="project__n" data-reveal aria-hidden="true">{p.n}</p>
             <h3 id={`p-${p.id}`} class="project__title display" data-reveal lang="en">{p.title}</h3>
             <p class="project__summary" data-reveal style="--d:.06s">{p.summary}</p>
             <p class="project__body" data-reveal style="--d:.12s">{p.body}</p>

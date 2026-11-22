@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { site } from "../config/site";
 import { langs, locales } from "../i18n/locales";
 
-// One page in three languages. Each URL lists all language versions (hreflang alternates).
+// One page in two languages. Each URL lists all language versions (hreflang alternates).
 export const GET: APIRoute = () => {
   const url = (path: string) => new URL(path, site.url).href;
   const alts = langs.map((l) => `    <xhtml:link rel="alternate" hreflang="${locales[l].tag}" href="${url(locales[l].path)}"/>`)

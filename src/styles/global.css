@@ -5,17 +5,6 @@
 @import "@fontsource-variable/fraunces/opsz-italic.css";
 @import "@fontsource-variable/manrope/wght.css";
 
-/* Vazirmatn (OFL) for the Farsi page: only the Arabic script subset, so Latin words keep Fraunces and
-   Manrope and browsers fetch the file only for text that needs it. */
-@font-face {
-  font-family: "Vazirmatn Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  src: url("../../node_modules/@fontsource-variable/vazirmatn/files/vazirmatn-arabic-wght-normal.woff2") format("woff2-variations");
-  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC;
-}
-
 :root {
   --paper: #f1e2d2;
   --paper-deep: #e8d8c6;
@@ -32,7 +21,6 @@
 
   --serif: "Fraunces Variable", "Fraunces", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
   --sans: "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --sans-fa: "Vazirmatn Variable", "Manrope Variable", "Vazirmatn", Tahoma, system-ui, sans-serif;
 
   --gutter: clamp(1.25rem, 5vw, 5rem);
   --max: 82rem;
@@ -117,19 +105,3 @@ html.reveal-on [data-reveal="img"].is-in :is(img) { transform: none; }
 /* Live paper sculpture canvas (src/scripts/sculpture): fades in over the identical static image. */
 canvas.sculpture__live { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0; transition: opacity 1.6s var(--ease); }
 canvas.sculpture__live.is-live { opacity: 1; }
-
-/* Farsi (right to left). Vazirmatn for Persian text in both roles, with Latin names kept in Fraunces and
-   Manrope. Arabic script must never be letter-spaced or upper-cased (it breaks the joined letters), and
-   it needs more room between lines than Latin display type. */
-:root:lang(fa) {
-  --serif: "Vazirmatn Variable", "Fraunces Variable", "Fraunces", Georgia, serif;
-  --sans: var(--sans-fa);
-}
-:lang(fa) :where(.display, .eyebrow, .lead, p, li, h1, h2, h3, dt, dd, a, figcaption) { letter-spacing: 0; }
-:lang(fa) .eyebrow { font-size: 0.82rem; font-weight: 600; text-transform: none; }
-:lang(fa) .display { line-height: 1.3; font-weight: 400; }
-:lang(fa) body { line-height: 1.95; }
-:lang(fa) .lead { line-height: 1.95; }
-[dir="rtl"] .text-link { background-position: 100% 100%; }
-[dir="rtl"] .text-link:hover .arrow { transform: translate(-2px, -2px); }
-[dir="rtl"] .text-link:hover .arrow--down { transform: translateY(3px); }

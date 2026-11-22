@@ -28,7 +28,7 @@ check(html.includes(`property="og:image" content="${SITE}/og.jpg"`), "og:image a
 check(existsSync(join(dist, "og.jpg")) && statSync(join(dist, "og.jpg")).size < 300_000, "og.jpg present and < 300 kB");
 for (const f of ["favicon.svg", "favicon-32.png", "apple-touch-icon.png", "robots.txt", "sitemap.xml", "404.html"]) check(existsSync(join(dist, f)), `${f} present`);
 const sitemap = readFileSync(join(dist, "sitemap.xml"), "utf8");
-check(["/", "/sv/", "/fa/"].every((p) => sitemap.includes(`<loc>${SITE}${p}</loc>`)) && (sitemap.match(/hreflang=/g) ?? []).length === 12, "sitemap lists all three languages with alternates");
+check(["/", "/sv/"].every((p) => sitemap.includes(`<loc>${SITE}${p}</loc>`)) && !sitemap.includes("/fa/") && (sitemap.match(/hreflang=/g) ?? []).length === 6, "sitemap lists both languages with alternates");
 check(/<html lang="en" dir="ltr"/.test(html), "document language set");
 check((html.match(/<h1[\s>]/g) ?? []).length === 1, "exactly one h1");
 check(!/\bstudent\b/i.test(text), "copy never describes her as a student");
@@ -56,7 +56,6 @@ console.log("\nLanguages");
 const LANGS = [
   { lang: "en", path: "/", dir: "ltr", copy: ["Selected work", "Practice", "Thanks for visiting."] },
   { lang: "sv", path: "/sv/", dir: "ltr", copy: ["Utvalda arbeten", "Inriktning", "Tack för besöket.", "Digital designer", "Öppna Color Lab", "Öppna Kashi Studio"] },
-  { lang: "fa", path: "/fa/", dir: "rtl", copy: ["نمونه‌کارهای منتخب", "رویکرد", "از بازدید شما سپاسگزارم.", "طراح دیجیتال", "باز کردن Color Lab", "باز کردن Kashi Studio", "۰۴"] },
 ];
 for (const L of LANGS) {
   const h = readFileSync(join(dist, L.path, "index.html"), "utf8");
@@ -70,7 +69,7 @@ for (const L of LANGS) {
   const ext = [...h.matchAll(/href="(https?:[^"]+)"/g)].map((m) => m[1]).filter((u) => !u.startsWith(SITE));
   check(ext.every((u) => allowed.includes(u)), `${L.lang}: only verified external links`, ext.join(", "));
   const read = [t, ...[...h.matchAll(/(?:alt|aria-label|content|title)="([^"]*)"/g)].map((m) => m[1])].join(" \n ").replace(/&#39;|&amp;|&quot;/g, " ");
-  const bad = read.match(/.{0,30}[—–;؛].{0,30}/g)?.filter((m) => !/https?:|width=device|initial-scale/.test(m)) ?? [];
+  const bad = read.match(/.{0,30}[—–;].{0,30}/g)?.filter((m) => !/https?:|width=device|initial-scale/.test(m)) ?? [];
   check(bad.length === 0, `${L.lang}: copy uses no em dashes, en dashes or semicolons`, bad.slice(0, 3).join(" | "));
   check(!/\bstudent\b|\bstudent(en)?\b|دانشجو/i.test(t), `${L.lang}: never describes her as a student`);
   check((h.match(/<h1[\s>]/g) ?? []).length === 1, `${L.lang}: exactly one h1`);
@@ -157,16 +156,6 @@ for (const { vp, reduced, L } of runs) {
   check(r.formats.includes("avif") || r.formats.includes("webp"), `modern image formats served (${r.formats.join(", ")})`);
   check(r.hidden === 0, "all revealed content visible after scrolling", `${r.hidden} still hidden`);
   check(r.fonts.some((f) => /Fraunces/.test(f)) && r.fonts.some((f) => /Manrope/.test(f)), "Fraunces + Manrope loaded");
-  if (L.lang === "fa") {
-    check(r.fonts.some((f) => /Vazirmatn/.test(f)), "Vazirmatn loaded for Persian text");
-    const rtl = await page.evaluate(() => {
-      const t = document.querySelector(".hero__text").getBoundingClientRect(), a = document.querySelector(".hero__art").getBoundingClientRect();
-      return { dir: getComputedStyle(document.body).direction, textRight: Math.round(innerWidth - t.right), heroArtLeft: Math.round(a.left), family: getComputedStyle(document.querySelector(".lead")).fontFamily };
-    });
-    check(rtl.dir === "rtl", "page flows right to left");
-    check(/Vazirmatn/.test(rtl.family), "Persian text set in Vazirmatn");
-    if (vp.name === "desktop") check(rtl.heroArtLeft <= 1, "hero sculpture sits on the left, away from the right-aligned text", `art left ${rtl.heroArtLeft}`);
-  } else check(!r.fonts.some((f) => /Vazirmatn/.test(f)), "Persian font not downloaded on this page");
   check(r.anchors.length === 0, "all in-page anchors resolve", r.anchors.join(", "));
   if (reduced) check(!r.animClass, "reduced motion: animation gate off");
   await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
@@ -250,12 +239,12 @@ const ctx = await browser.newContext();
 const p404 = await ctx.newPage();
 const res = await p404.goto(base + "/does-not-exist");
 check(res.status() === 404 && ((await p404.textContent("h1")) ?? "").includes("could not be found"), "404 page served");
-check((await p404.$$eval('.nf__other a', (a) => a.map((x) => x.getAttribute("href")))).join() === "/sv/,/fa/", "404 page links to the Swedish and Farsi home pages");
+check((await p404.$$eval('.nf__other a', (a) => a.map((x) => x.getAttribute("href")))).join() === "/sv/", "404 page links to the Swedish home page");
 // switching language from the header keeps working
 const pl = await ctx.newPage();
 await pl.goto(base + "/");
-await Promise.all([pl.waitForURL(base + "/fa/"), pl.click('.top__lang a[lang="fa"]')]);
-check(await pl.evaluate(() => document.documentElement.dir === "rtl" && document.documentElement.lang === "fa"), "language switcher opens the Farsi page");
+check((await pl.$$('.top__lang a')).length === 2 && !(await pl.$('a[href="/fa/"]')), "language switcher offers only English and Swedish");
+check(!existsSync(join(dist, "fa")), "no Farsi page is built");
 await Promise.all([pl.waitForURL(base + "/sv/"), pl.click('.top__lang a[lang="sv"]')]);
 check(await pl.evaluate(() => document.documentElement.lang === "sv"), "language switcher opens the Swedish page");
 await browser.close();
