@@ -8,6 +8,7 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { SVGLoader } from "three/examples/jsm/loaders/SVGLoader.js";
 import ek from "../../src/assets/monogram/ek.json";
+import { Band, CAMERA, FRAME, GOBO, KEY_DIR, MAIN, SAGE, goboBasis, type BandDef } from "../../src/scripts/sculpture/shape";
 
 type V = THREE.Vector3;
 const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -301,6 +302,28 @@ function branch(seed: number, o: { at: [number, number, number]; normal: [number
   return m;
 }
 
+/** A band of the hero sculpture (shared geometry with the live renderer), at its first keyframe. */
+function sculptureBand(def: BandDef) {
+  const b = new Band(def), g = new THREE.Group();
+  const mats = [paper(def.front, { side: THREE.DoubleSide }), paper(def.back, { side: THREE.DoubleSide }), paper(def.edge, { side: THREE.DoubleSide, normalMap: null })];
+  [b.front, b.back, b.edges].forEach((geo, i) => g.add(mesh(geo, mats[i])));
+  return g;
+}
+
+/** The hero branch silhouette seen from the key light (white on black), for the live renderer's leaf shadows. */
+export function renderLeaves(size = 512): string {
+  const canvas = document.createElement("canvas"); canvas.width = canvas.height = size;
+  const r = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  const s = new THREE.Scene(); s.background = new THREE.Color("#000");
+  const m = branch(7, { at: along(GOBO.at, KEY_DIR, GOBO.dist), normal: KEY_DIR, size: GOBO.size, leaves: 5, spin: 0.6 });
+  m.material = new THREE.MeshBasicMaterial({ color: "#fff", side: THREE.DoubleSide }); s.add(m);
+  const b = goboBasis(), h = b.size / 2;
+  const cam = new THREE.OrthographicCamera(-h, h, h, -h, 1, 4000);
+  cam.position.copy(b.centre).addScaledVector(b.d, 1000); cam.up.copy(b.e2); cam.lookAt(b.centre);
+  r.render(s, cam);
+  const url = canvas.toDataURL("image/png"); r.dispose(); return url;
+}
+
 /** Slim frameless panel showing a real application screenshot (front face = image, lit like a matte screen). */
 function screenPanel(shot: THREE.Texture, W: number, H: number, depth = 12, r = 9) {
   const sh = new THREE.Shape(), x0 = -W / 2, y0 = -H / 2;
@@ -340,24 +363,20 @@ const along = (target: [number, number, number], dir: [number, number, number], 
   const d = v(...dir).normalize(); return [target[0] + d.x * dist, target[1] + d.y * dist, target[2] + d.z * dist];
 };
 
-const HERO_KEY: [number, number, number] = [-0.45, 0.62, 0.64];
-const HERO_GOBO: [number, number, number] = [0.62, 0.62, 0.48];
+const HERO_KEY = KEY_DIR;
 const STAGE_KEY: [number, number, number] = [-0.55, 0.6, 0.58];
 
 export const ARTWORKS: ArtSpec[] = [
   {
-    name: "hero-ribbon", width: 2800, height: 1700, bg: P2.cream, shadowExtent: 1300,
+    // The live hero sculpture (src/scripts/sculpture) at the start of its loop: this image is its first frame.
+    name: "hero-ribbon", width: FRAME.width, height: FRAME.height, bg: P2.cream, shadowExtent: 1300,
     build: (s) => {
       s.add(sweep(P2.cream, 9000, 2600, 2000, 420));
-      // broad sheet: lies on the floor (cream side up), lifts into a tall wave and curls back over itself
-      s.add(ribbon([[-2600, 1, 2900], [-1700, 1, 1900], [-900, 1, 820], [-420, 6, 300], [-120, 90, 200], [80, 300, 160], [120, 560, 120], [-20, 760, 90], [-260, 820, 70], [-470, 700, 70], [-520, 520, 90]],
-        { width: 1050, twist: 0.22, tilt: 0.12, front: P2.creamLit, back: P2.clay, across: [0.25, 0, 1] }));
-      s.add(ribbon([[1800, 1, 380], [1000, 1, 360], [600, 30, 320], [430, 200, 280], [480, 380, 230], [680, 430, 200], [880, 330, 200]],
-        { width: 520, twist: -0.25, front: P2.creamLit, back: P2.sage, across: [-0.2, 0, 1] }));
-      s.add(branch(7, { at: along([-200, 400, 0], HERO_KEY, 1000), normal: HERO_KEY, size: 1300, leaves: 5, spin: 0.6 }));
+      s.add(sculptureBand(MAIN), sculptureBand(SAGE));
+      s.add(branch(7, { at: along(GOBO.at, KEY_DIR, GOBO.dist), normal: KEY_DIR, size: GOBO.size, leaves: 5, spin: 0.6 }));
     },
-    camera: { pos: [-250, 1000, 3900], target: [-500, 330, 0], fov: 30, aperture: 26, focus: [-150, 420, 150] },
-    key: { dir: HERO_KEY, intensity: 3.2, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.6 },
+    camera: { pos: CAMERA.pos, target: CAMERA.target, fov: CAMERA.fov, aperture: 26, focus: CAMERA.focus },
+    key: { dir: KEY_DIR, intensity: 3.2, softness: 0.05, color: "#ffeedd" }, dome: { fraction: 0.3, intensity: 1.6 },
     fill: 1.25, env: 0.28, exposure: 1.04, samples: 128, grain: 0.012, vignette: 0.0,
   },
   {

@@ -6,6 +6,8 @@ import { createServer } from "node:http";
 import { readFileSync, existsSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { chromium } from "playwright-core";
+import { build } from "esbuild";
+import sharp from "sharp";
 
 const dist = resolve("dist");
 const SITE = "https://www.elhamkouhbor.com";
@@ -45,6 +47,24 @@ check(!/<img[^>]*(portrait|profile)/i.test(html), "no portrait imagery");
 check(!/https?:\/\/(?!www\.elhamkouhbor\.com|schema\.org|github\.com\/elhamkouhbor|www\.w3\.org)[^"' )]+\.(jpe?g|png|webp|avif|gif)/i.test(html), "no hotlinked images");
 for (const h of ["Elham", "Kouhbor", "Selected work", "Fold", "Dieline", "Practice", "Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "CAD", "Thanks for visiting."]) check(text.includes(h), `copy present: ${h}`);
 check(!/skill|expert|master|%<\//i.test(text), "no skill bars, percentages or expert labels");
+
+check(!/rel="modulepreload"[^>]*live\./.test(html), "3D hero renderer is not preloaded (loaded lazily)");
+
+// ---------- Hero sculpture geometry over its loop ----------
+console.log("\nHero sculpture (geometry over one full loop)");
+{
+  const out = await build({ entryPoints: ["scripts/sculpture-check.ts"], bundle: true, platform: "node", format: "esm", write: false, logLevel: "error" });
+  const { run } = await import("data:text/javascript;base64," + Buffer.from(out.outputFiles[0].text).toString("base64"));
+  const r = run(120);
+  check(r.seam.every((s) => s.shape < 1e-6), "loop is seamless: last shape equals the first");
+  check(r.seam.every((s) => s.velocity < 0.02), "loop is seamless: motion keeps its speed across the boundary", JSON.stringify(r.seam));
+  check(r.top > 0.08, "sculpture stays below the header", r.top.toFixed(3));
+  check(r.left > 0.2 && r.right < 0.9, "sculpture stays inside the composition", `${r.left.toFixed(3)}–${r.right.toFixed(3)}`);
+  check(r.mutual > 20, "the two paper bands never touch", String(r.mutual));
+  check(r.self > 20, "no band passes through itself", String(r.self));
+  check(r.wall < 10, "paper never pushes through the wall", r.wall.toFixed(1));
+  check(r.stretch < 0.002, "paper keeps its length (no stretching)", r.stretch.toExponential(2));
+}
 
 // ---------- Browser checks ----------
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
@@ -103,6 +123,10 @@ for (const vp of viewports) for (const reduced of [false, true]) {
   check(r.fonts.some((f) => /Fraunces/.test(f)) && r.fonts.some((f) => /Manrope/.test(f)), "Fraunces + Manrope loaded");
   check(r.anchors.length === 0, "all in-page anchors resolve", r.anchors.join(", "));
   if (reduced) check(!r.animClass, "reduced motion: animation gate off");
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(200);
+  const hero = await page.evaluate(() => { const i = document.querySelector(".hero__art img"); return { img: !!i && i.complete && i.naturalWidth > 0 && getComputedStyle(i).visibility !== "hidden", canvas: document.querySelectorAll("canvas.hero__live").length }; });
+  check(hero.img, "hero image shown (never blank)");
+  if (reduced) check(hero.canvas === 0, "reduced motion: static hero image, no 3D animation");
   check(errors.length === 0, "no console errors", errors.slice(0, 3).join(" | "));
   check(badResponses.length === 0, "no failed requests", badResponses.slice(0, 3).join(", "));
 
@@ -114,6 +138,49 @@ for (const vp of viewports) for (const reduced of [false, true]) {
     check(Math.abs(top) < 40, `nav link #${id} scrolls to its section`, `top=${top}`);
   }
   await ctx.close();
+}
+
+// ---------- Live hero on a real GPU (skipped where only software WebGL exists, e.g. CI) ----------
+{
+  const gpu = await chromium.launch({ args: ["--use-angle=vulkan", "--enable-features=Vulkan", "--ignore-gpu-blocklist"] }).catch(() => null);
+  const probe = gpu && await (await gpu.newPage()).evaluate(() => { const g = document.createElement("canvas").getContext("webgl2", { failIfMajorPerformanceCaveat: true }); return g ? g.getParameter(g.getExtension("WEBGL_debug_renderer_info")?.UNMASKED_RENDERER_WEBGL ?? g.RENDERER) : null; });
+  if (!probe || /SwiftShader|llvmpipe|software/i.test(probe)) console.log("\nLive hero (GPU): skipped, no hardware WebGL here");
+  else {
+    console.log(`\nLive hero (GPU: ${probe.replace(/\s*\(0x[0-9A-F]+\)/gi, "")})`);
+    const S = () => document.querySelector("[data-sculpture]").sculpture;
+    for (const vp of [viewports[0], viewports[2]]) {
+      const page = await gpu.newPage({ viewport: { width: vp.width, height: vp.height }, isMobile: vp.isMobile, hasTouch: vp.hasTouch, deviceScaleFactor: vp.isMobile ? 3 : 1 });
+      const errors = []; page.on("console", (m) => m.type() === "error" && errors.push(m.text())); page.on("pageerror", (e) => errors.push(e.message));
+      await page.goto(base + "/", { waitUntil: "load" });
+      const live = await page.waitForFunction(() => document.querySelector("canvas.hero__live.is-live"), null, { timeout: 15000 }).then(() => true, () => false);
+      check(live, `${vp.name}: live sculpture fades in over the image`);
+      if (!live) { await page.close(); continue; }
+      await page.waitForTimeout(4500);
+      const a = await page.evaluate((f) => eval(f)().state(), `(${S})`);
+      check(a.fps >= (vp.isMobile ? 27 : 50), `${vp.name}: smooth frame rate (${a.fps.toFixed(0)} fps at ${a.pixelRatio}× resolution)`);
+      // the first frame of the loop matches the static image it replaces (seamless hand-off)
+      const shot = async () => (await sharp(await page.locator(".hero__art").screenshot()).resize(240, 200, { fit: "fill" }).removeAlpha().raw().toBuffer());
+      const diff = (x, y) => { let d = 0; for (let i = 0; i < x.length; i++) d += Math.abs(x[i] - y[i]); return d / x.length; };
+      await page.evaluate(() => { document.documentElement.classList.remove("intro"); const c = document.querySelector("canvas.hero__live"); c.style.transition = "none"; c.style.animation = "none"; });
+      await page.addStyleTag({ content: ".hero__stage{animation:none!important}" });
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(300);
+      await page.evaluate((f) => eval(f)().renderAt(0), `(${S})`);
+      const live0 = await shot();
+      await page.evaluate((f) => eval(f)().renderAt(1 - 1e-6), `(${S})`); const live1 = await shot();
+      await page.evaluate((f) => eval(f)().renderAt(0.5), `(${S})`); const mid = await shot();
+      await page.evaluate(() => { document.querySelector("canvas.hero__live").style.opacity = "0"; }); await page.waitForTimeout(100);
+      const poster = await shot();
+      check(diff(live0, live1) < 0.5, `${vp.name}: no jump at the loop boundary (Δ ${diff(live0, live1).toFixed(2)})`);
+      check(diff(live0, poster) < 6 && diff(live0, poster) < diff(live0, mid) / 2, `${vp.name}: first frame matches the static image (Δ ${diff(live0, poster).toFixed(1)}, mid-loop Δ ${diff(live0, mid).toFixed(1)})`);
+      // pauses when the hero is out of view (the screenshots above scrolled it back in)
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight)); await page.waitForTimeout(500);
+      const p1 = (await page.evaluate((f) => eval(f)().state(), `(${S})`)); await page.waitForTimeout(1200); const p2 = (await page.evaluate((f) => eval(f)().state(), `(${S})`));
+      check(!p2.running && p1.phase === p2.phase, `${vp.name}: animation pauses when the hero is off screen`);
+      check(errors.length === 0, `${vp.name}: no console errors`, errors.slice(0, 3).join(" | "));
+      await page.close();
+    }
+  }
+  await gpu?.close();
 }
 
 // 404 page

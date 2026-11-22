@@ -5,7 +5,7 @@
 //
 // Project images are renders that show the real application screenshots (src/assets/projects) on a
 // panel, composed with one physical object. The background compositions are original renders from
-// scripts/art.
+// scripts/art. The hero image is the first frame of the live paper sculpture (src/scripts/sculpture).
 import type { ImageMetadata } from "astro";
 import heroRibbon from "../assets/art/hero-ribbon.jpg";
 import projectFold from "../assets/art/project-fold.jpg";
@@ -75,7 +75,13 @@ export const practice = {
   interestsLabel: "Interests",
   interests: ["Digital design", "Visual communication", "Typography", "Layout", "Interactive experiences"],
   toolsLabel: "Tools",
-  tools: ["Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "CAD"],
+  // Original pictograms (src/components/ToolIcon.astro), not the product logos.
+  tools: [
+    { name: "Adobe Photoshop", icon: "image" },
+    { name: "Adobe Illustrator", icon: "vector" },
+    { name: "Adobe InDesign", icon: "layout" },
+    { name: "CAD", icon: "drafting" },
+  ] as { name: string; icon: "image" | "vector" | "layout" | "drafting" }[],
 };
 
 export const closing = {
